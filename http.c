@@ -90,7 +90,7 @@ status_value(const char* header_str)
 	const char *regex_template = "^HTTP/[[:alnum:].]\\{1,\\} \\([[:digit:]]\\{1,3\\}\\)";
 	regex_t regex;
 	char regex_err_buf[128];
-    regmatch_t pmatch[2];
+	regmatch_t pmatch[2];
 	int reti;
 	char *return_str;
 	
@@ -141,7 +141,7 @@ header_value(const char* header_str, const char* header_name)
 	regex_t regex;
 	char regex_err_buf[128];
 	char regex_buf[256];
-    regmatch_t pmatch[2];
+	regmatch_t pmatch[2];
 	int reti;
 	char *return_str;
 	
@@ -207,7 +207,7 @@ Datum http_get(PG_FUNCTION_ARGS)
 
 	/* Output */
 	char **values;
-    AttInMetadata *attinmeta;
+	AttInMetadata *attinmeta;
 	HeapTuple tuple;
 	Datum result;
 
@@ -262,11 +262,11 @@ Datum http_get(PG_FUNCTION_ARGS)
 	values[1] = header_value(stringbuffer_getstring(sb_headers), "Content-Type");
 	values[2] = (char*)stringbuffer_getstring(sb_headers);
 	values[3] = (char*)stringbuffer_getstring(sb_data);
-	
+
 	/* Flip cstring values into a PgSQL tuple */
-    attinmeta = TupleDescGetAttInMetadata(RelationNameGetTupleDesc("http_response"));
-    tuple = BuildTupleFromCStrings(attinmeta, values);
-    result = HeapTupleGetDatum(tuple);
+	attinmeta = TupleDescGetAttInMetadata(RelationNameGetTupleDesc("http_response"));
+	tuple = BuildTupleFromCStrings(attinmeta, values);
+	result = HeapTupleGetDatum(tuple);
 	
 	/* Convert to text */
 	//result = cstring_to_text_with_len(stringbuffer_getstring(sb_data), stringbuffer_getlength(sb_data));
