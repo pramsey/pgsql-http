@@ -15,6 +15,7 @@ Example
 =======
 
 ::
+
   SELECT http_get('http://localhost');
 
                                       http_get                                   
