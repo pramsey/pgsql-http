@@ -10,5 +10,5 @@ CREATE TYPE http_response AS (
 
 CREATE FUNCTION http_get(url VARCHAR, params VARCHAR DEFAULT NULL)
 	RETURNS http_response
-	AS '$libdir/http'
+	AS 'MODULE_PATHNAME'
 	LANGUAGE C;
