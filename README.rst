@@ -89,10 +89,10 @@ Operation
 
 The extension is just a wrapping around CURL, which provides us the headers and the content body of the result. We get the status code and the content type by running a regex on the headers. All the information is that stuffed into a compound type for return, with slots for:
 
-- status, the HTTP status code
-- content_type, the mime-type of the response
-- headers, the full text of the response headers
-- content, the full text of the content
+- **status**, the HTTP status code
+- **content_type**, the mime-type of the response
+- **headers**, the full text of the response headers
+- **content**, the full text of the content
 
 To Do
 =====
