@@ -1,6 +1,4 @@
 /**********************************************************************
- * $Id: stringbuffer.c 9485 2012-03-13 16:23:38Z pramsey $
- *
  * Copyright 2002 Thamer Alharbash
  * Copyright 2009 Paul Ramsey <pramsey@cleverelephant.ca>
  *
