@@ -1,16 +1,18 @@
 ======================
 PostgreSQL HTTP Client
 ======================
+:Info: See `github <http://github.com/pramsey/pgsql-http>`_ for the latest source.
+:Author: Paul Ramsey <pramsey@opengeo.org>
 
 Motivation
-----------
+==========
 
 Wouldn't it be nice to be able to write a trigger that called a web service? Either to get back a result, or to poke that service into refreshing itself against the new state of the database?
 
 This extension is for that. 
 
 Example
--------
+=======
 
 ::
   SELECT http_get('http://localhost');
@@ -61,32 +63,32 @@ Example
 
 
 Installation
-------------
+============
 
 UNIX
-~~~~
+----
 
 If you have PostgreSQL devel packages and CURL devel packages installed, you should have ``pg_config`` and ``curl-config`` on your path, so you should be able to just run ``make``.
 
 Windows
-~~~~~~~
+-------
 
 Sorry, no story here yet.
 
 Operation
----------
+=========
 
 The extension is just a wrapping around CURL, which provides us the headers and the content body of the result. We get the status code and the content type by running a regex on the headers. All the information is that stuffed into a compound type for return, with slots for:
 
- * status, the HTTP status code
- * content_type, the mime-type of the response
- * headers, the full text of the response headers
- * content, the full text of the content
+- status, the HTTP status code
+- content_type, the mime-type of the response
+- headers, the full text of the response headers
+- content, the full text of the content
 
 To Do
------
+=====
 
- * There is currently only one function, and no support for parameters or anything like that. Support for other HTTP verbs is an obvious enhancement. 
- * Some kind of support for parameters and encoding that doesn't involve hand-balling text is another (but without an associative array type to hold the parameters, seems messy (hello, PgSQL 9.2)).
- * Inevitably some web server will return gzip content (Content-Encoding) without being asked for it. Handling that gracefully would be good.
+- There is currently only one function, and no support for parameters or anything like that. Support for other HTTP verbs is an obvious enhancement. 
+- Some kind of support for parameters and encoding that doesn't involve hand-balling text is another (but without an associative array type to hold the parameters, seems messy (hello, PgSQL 9.2)).
+- Inevitably some web server will return gzip content (Content-Encoding) without being asked for it. Handling that gracefully would be good.
 
