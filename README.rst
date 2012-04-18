@@ -36,6 +36,7 @@ Example
      ","<html><body><h1>It works!</h1></body></html>")
     (1 row)
 
+
   SELECT status, content_type, content FROM http_get('http://localhost');
 
      status | content_type |                   content                    
@@ -43,8 +44,8 @@ Example
         200 | text/html    | <html><body><h1>It works!</h1></body></html>
     (1 row)
 
-  SELECT headers FROM http_get('http://localhost');
 
+  SELECT headers FROM http_get('http://localhost');
 
                                        headers                                    
     ------------------------------------------------------------------------------
@@ -61,7 +62,7 @@ Example
      Content-Type: text/html\r                                                   +
      Content-Language: en\r                                                      +
      \r                                                                          +
-
+    (1 row)
 
 Installation
 ============
