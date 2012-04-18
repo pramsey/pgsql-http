@@ -77,6 +77,13 @@ Windows
 
 Sorry, no story here yet.
 
+Why This is a Bad Idea
+======================
+
+- "What happens if the web page takes a long time to return?" Your SQL call will just wait there until it does. Make sure your web service fails fast.
+- "What if the web page returns junk?" Your SQL call will have to test for junk before doing anything with the payload.
+- "What if the web page never returns?" I've found this code can really hang a back-end hard. The curl timeout settings need more testing and tweaking for faster failure and timeout.
+
 Operation
 =========
 
