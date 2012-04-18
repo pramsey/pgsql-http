@@ -42,6 +42,12 @@
 
 #define STRINGBUFFER_STARTSIZE 128
 
+/* Set the allocators you want to use. */
+/* These are for PostgreSQL */
+#define sb_malloc palloc
+#define sb_free pfree
+#define sb_realloc repalloc
+
 typedef struct
 {
 	size_t capacity;

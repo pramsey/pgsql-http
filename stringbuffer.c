@@ -55,8 +55,8 @@ stringbuffer_create_with_size(size_t size)
 {
 	stringbuffer_t *s;
 
-	s = palloc(sizeof(stringbuffer_t));
-	s->str_start = palloc(size);
+	s = sb_malloc(sizeof(stringbuffer_t));
+	s->str_start = sb_malloc(size);
 	s->str_end = s->str_start;
 	s->capacity = size;
 	memset(s->str_start,0,size);
@@ -69,8 +69,8 @@ stringbuffer_create_with_size(size_t size)
 void 
 stringbuffer_destroy(stringbuffer_t *s)
 {
-	if ( s->str_start ) pfree(s->str_start);
-	if ( s ) pfree(s);
+	if ( s->str_start ) sb_free(s->str_start);
+	if ( s ) sb_free(s);
 }
 
 /**
@@ -101,7 +101,7 @@ stringbuffer_makeroom(stringbuffer_t *s, size_t size_to_add)
 
 	if ( capacity > s->capacity )
 	{
-		s->str_start = repalloc(s->str_start, capacity);
+		s->str_start = sb_realloc(s->str_start, capacity);
 		s->capacity = capacity;
 		s->str_end = s->str_start + current_size;
 	}
@@ -161,7 +161,7 @@ char*
 stringbuffer_getstringcopy(stringbuffer_t *s)
 {
 	size_t size = (s->str_end - s->str_start) + 1;
-	char *str = palloc(size);
+	char *str = sb_malloc(size);
 	memcpy(str, s->str_start, size);
 	str[size - 1] = '\0';
 	return str;
