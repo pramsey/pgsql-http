@@ -1,0 +1,50 @@
+{
+   "name": "http",
+   "abstract": "HTTP client for PostgreSQL",
+   "description": "HTTP allows you to get the content of a web page in a SQL function call.",
+   "version": "1.0",
+   "maintainer": [
+      "Paul Ramsey <pramsey@cleverelephant.ca>"
+   ],
+   "license": {
+      "MIT": "http://en.wikipedia.org/wiki/MIT_License"
+   },
+   "prereqs": {
+      "runtime": {
+         "requires": {
+            "PostgreSQL": "9.1.0"
+         },
+         "recommends": {
+            "PostgreSQL": "9.1.3"
+         }
+      }
+   },
+   "provides": {
+     "http": {
+       "file": "http--1.0.sql",
+       "docfile": "README.md",
+       "version": "1.0",
+       "abstract": "HTTP client for PostgreSQL"
+     },
+   },
+   "resources": {
+      "homepage": "https://github.com/pramsey/pgsql-http/",
+      "bugtracker": {
+         "web": "https://github.com/pramsey/pgsql-http/issues"
+      },
+      "repository": {
+        "url":  "https://github.com/pramsey/pgsql-http.git",
+        "web":  "https://github.com/pramsey/pgsql-http/",
+        "type": "git"
+      }
+   },
+   "generated_by": "Paul Ramsey",
+   "meta-spec": {
+      "version": "1.0.0",
+      "url": "http://pgxn.org/meta/spec.txt"
+   },
+   "tags": [
+      "http",
+      "web"
+   ]
+}
