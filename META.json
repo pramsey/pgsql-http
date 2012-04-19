@@ -45,6 +45,7 @@
    },
    "tags": [
       "http",
+      "curl",
       "web"
    ]
 }
