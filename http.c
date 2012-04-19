@@ -29,7 +29,7 @@
 
 /* Constants */
 #define HTTP_VERSION "1.0"
-#define HTTP_TIMEOUT 5
+#define HTTP_ENCODING "gzip"
 
 /* System */
 #include <regex.h>
@@ -242,12 +242,20 @@ Datum http_get(PG_FUNCTION_ARGS)
 	curl_easy_setopt(http_handle, CURLOPT_WRITEDATA, (void*)sb_data);
 	curl_easy_setopt(http_handle, CURLOPT_WRITEHEADER, (void*)sb_headers);
 	
-	/* Set up the HTTP timeout*/
-	curl_easy_setopt(http_handle, CURLOPT_TIMEOUT, HTTP_TIMEOUT);
+	/* Set up the HTTP timeout */
+	curl_easy_setopt(http_handle, CURLOPT_TIMEOUT, 5);
+	curl_easy_setopt(http_handle, CURLOPT_CONNECTTIMEOUT, 1);
+
+	/* Set up the HTTP content encoding to gzip */
+	curl_easy_setopt(http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING);
+
+	/* Follow redirects, as many as 5 */
+	curl_easy_setopt(http_handle, CURLOPT_FOLLOWLOCATION, 1);
+	curl_easy_setopt(http_handle, CURLOPT_MAXREDIRS, 5);
 	
 	/* Run it! */ 
 	http_return = curl_easy_perform(http_handle);
-	elog(NOTICE, "Queried %s", text_to_cstring(url));
+//	elog(NOTICE, "Queried %s", text_to_cstring(url));
 
 	/* Write out an error on failure */
 	if ( http_return )
