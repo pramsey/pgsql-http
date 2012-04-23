@@ -85,56 +85,6 @@ http_writeback(void *contents, size_t size, size_t nmemb, void *userp)
 * search out to the end of the header line (\n) and optionally also to remove " marks.
 */
 static char*
-status_value(const char* header_str)
-{
-	const char *regex_template = "^HTTP/[[:alnum:].]\\{1,\\} \\([[:digit:]]\\{1,3\\}\\)";
-	regex_t regex;
-	char regex_err_buf[128];
-	regmatch_t pmatch[2];
-	int reti;
-	char *return_str;
-	
-	/* Compile the regular expression */
-	reti = regcomp(&regex, regex_template, 0);
-	if ( reti )
-		ereport(ERROR, (errmsg("Could not compile regex")));
-
-	/* Execute regular expression */
-	reti = regexec(&regex, header_str, 2, pmatch, 0);
-	if ( ! reti )
-	{
-		/* Got a match */
-		int so = pmatch[1].rm_so;
-		int eo = pmatch[1].rm_eo;
-		return_str = palloc(eo-so+1);
-		memcpy(return_str, header_str + so, eo-so);
-		return_str[eo-so] = '\0';
-		regfree(&regex);
-		return return_str;
-	}
-	else if( reti == REG_NOMATCH )
-	{
-		ereport(ERROR, (errmsg("Could not find status code")));
-	}
-	else
-	{
-		regerror(reti, &regex, regex_err_buf, sizeof(regex_err_buf));
-		ereport(ERROR, (errmsg("Regex match failed: %s\n", regex_err_buf)));
-	}
-
-	/* Free compiled regular expression if you want to use the regex_t again */
-	regfree(&regex);
-	return_str = palloc(1);
-	return_str[0] = '\0';
-	return return_str;
-}
-
-/**
-* Uses regex to find the value of a header. Very limited pattern right now, only
-* searches for an alphanumeric string after the header name. Should be extended to
-* search out to the end of the header line (\n) and optionally also to remove " marks.
-*/
-static char*
 header_value(const char* header_str, const char* header_name)
 {
 	const char *regex_template = "%s: \\([[:alnum:]+/-]\\{1,\\}\\)";
@@ -206,7 +156,7 @@ Datum http_get(PG_FUNCTION_ARGS)
 	int http_return;
 	long status;
 	char *content_type = NULL;
-	char status_buffer[128];
+	char status_str[128];
 
 	/* Output */
 	char **values;
@@ -261,16 +211,22 @@ Datum http_get(PG_FUNCTION_ARGS)
 //	elog(NOTICE, "Queried %s", text_to_cstring(url));
 
 	/* Write out an error on failure */
-	if ( http_return || 
-	     CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_RESPONSE_CODE, &status) ||
-	     CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_CONTENT_TYPE, content_type) )
+	if ( http_return )
 	{
 		curl_easy_cleanup(http_handle);
 		ereport(ERROR, (errmsg("CURL: %s", http_error_buffer)));
 	}
+
+	/* Read the metadata from the handle directly */
+	if ( (CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_RESPONSE_CODE, &status)) ||
+	     (CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_CONTENT_TYPE, &content_type)) )
+	{
+		curl_easy_cleanup(http_handle);
+		ereport(ERROR, (errmsg("CURL: Error in curl_easy_getinfo")));
+	}
 	
 	/* Print the status code out */
-	snprintf(status_buffer, sizeof(status_buffer), "%ld", status);
+	snprintf(status_str, sizeof(status_str), "%ld", status);
 	
 	/* Make sure the content type is not null */
 	if ( ! content_type )
@@ -278,7 +234,7 @@ Datum http_get(PG_FUNCTION_ARGS)
 	
 	/* Prepare our return object */
 	values = palloc(sizeof(char*) * 4);
-	values[0] = status_buffer;
+	values[0] = status_str;
 	values[1] = content_type;
 	values[2] = (char*)stringbuffer_getstring(sb_headers);
 	values[3] = (char*)stringbuffer_getstring(sb_data);
@@ -288,9 +244,6 @@ Datum http_get(PG_FUNCTION_ARGS)
 	tuple = BuildTupleFromCStrings(attinmeta, values);
 	result = HeapTupleGetDatum(tuple);
 	
-	/* Convert to text */
-	//result = cstring_to_text_with_len(stringbuffer_getstring(sb_data), stringbuffer_getlength(sb_data));
-
 	/* Clean up */
 	curl_easy_cleanup(http_handle);
 	pfree(http_error_buffer);
