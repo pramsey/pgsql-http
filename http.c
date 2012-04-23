@@ -67,7 +67,7 @@ void _PG_fini(void)
 }
 
 /**
-* This function isassed into CURL as the CURLOPT_WRITEFUNCTION, 
+* This function is passed into CURL as the CURLOPT_WRITEFUNCTION, 
 * this allows the  return values to be held in memory, in our case in a string.
 */
 static size_t
@@ -204,6 +204,9 @@ Datum http_get(PG_FUNCTION_ARGS)
 	stringbuffer_t *sb_data = stringbuffer_create();
 	stringbuffer_t *sb_headers = stringbuffer_create();
 	int http_return;
+	long status;
+	char *content_type = NULL;
+	char status_buffer[128];
 
 	/* Output */
 	char **values;
@@ -258,16 +261,25 @@ Datum http_get(PG_FUNCTION_ARGS)
 //	elog(NOTICE, "Queried %s", text_to_cstring(url));
 
 	/* Write out an error on failure */
-	if ( http_return )
+	if ( http_return || 
+	     CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_RESPONSE_CODE, &status) ||
+	     CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_CONTENT_TYPE, content_type) )
 	{
 		curl_easy_cleanup(http_handle);
 		ereport(ERROR, (errmsg("CURL: %s", http_error_buffer)));
 	}
-
+	
+	/* Print the status code out */
+	snprintf(status_buffer, sizeof(status_buffer), "%ld", status);
+	
+	/* Make sure the content type is not null */
+	if ( ! content_type )
+		content_type = "";
+	
 	/* Prepare our return object */
 	values = palloc(sizeof(char*) * 4);
-	values[0] = status_value(stringbuffer_getstring(sb_headers));
-	values[1] = header_value(stringbuffer_getstring(sb_headers), "Content-Type");
+	values[0] = status_buffer;
+	values[1] = content_type;
 	values[2] = (char*)stringbuffer_getstring(sb_headers);
 	values[3] = (char*)stringbuffer_getstring(sb_data);
 
