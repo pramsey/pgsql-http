@@ -1,5 +1,4 @@
-
 default_version = '1.0'
-module_pathname = '$libdir/shared_library_name'
+module_pathname = '$libdir/http'
 relocatable = true
 comment = 'HTTP client for PostgreSQL, allows web page retrieval inside the database.'
