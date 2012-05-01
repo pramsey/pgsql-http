@@ -254,5 +254,81 @@ Datum http_get(PG_FUNCTION_ARGS)
 	PG_RETURN_DATUM(result);
 }
 
+/* URL Encode Escape Chars */
+/* 48-57 (0-9) 65-90 (A-Z) 97-122 (a-z) 95 (_) 45 (-) */
+
+static int chars_to_not_encode[] = {
+	0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,1,0,0,1,1,
+	1,1,1,1,1,1,1,1,0,0,
+	0,0,0,0,0,1,1,1,1,1,
+	1,1,1,1,1,1,1,1,1,1,
+	1,1,1,1,1,1,1,1,1,1,
+	1,0,0,0,0,1,0,1,1,1,
+	1,1,1,1,1,1,1,1,1,1,
+	1,1,1,1,1,1,1,1,1,1,
+	1,1,1,0,0,0,0,0
+};
+
+
+Datum urlencode(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(urlencode);
+Datum urlencode(PG_FUNCTION_ARGS)
+{
+	text *txt = PG_GETARG_TEXT_P(0); /* Declare strict, so no test for NULL input */
+	size_t txt_size = VARSIZE(txt) - VARHDRSZ;
+	char *str_in, *str_out, *ptr;
+	int i, rv;
+	
+	/* Point into the string */
+	str_in = (char*)txt + VARHDRSZ;
+	
+	/* Prepare the output string */
+	str_out = palloc(txt_size * 4);
+	ptr = str_out;
+	
+	for ( i = 0; i < txt_size; i++ )
+	{
+		
+		/* Break on NULL */
+		if ( str_in[i] == '\0' )
+			break;
+
+		/* Replace ' ' with '+' */
+		if ( str_in[i] == ' ' )
+		{
+			*ptr = '+';
+			ptr++;
+			continue;
+		}
+		
+		/* Pass basic characters through */
+		if ( str_in[i] < 127 && chars_to_not_encode[(int)(str_in[i])] )
+		{
+			*ptr = str_in[i];
+			ptr++;
+			continue;
+		}
+		
+		/* Encode the remaining chars */
+		rv = snprintf(ptr, 4, "%%%02X", str_in[i]);
+		if ( rv < 0 )
+			PG_RETURN_NULL();
+		
+		/* Move pointer forward */
+		ptr+= 3;
+	}
+	*ptr = '\0';
+	
+	PG_RETURN_TEXT_P(cstring_to_text(str_out));
+}
+	
+	
+
+
+
 
 
