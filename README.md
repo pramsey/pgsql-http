@@ -84,6 +84,7 @@ The extension is just a wrapping around CURL, which provides us the headers and 
 
 ## To Do
 
+- The new http://www.postgresql.org/docs/9.3/static/bgworker.html background worker support could be used to set up an HTTP request queue, so that pgsql-http can register a request and callback and then return immediately.
 - There is currently only one function, and no support for parameters or anything like that. Support for other HTTP verbs is an obvious enhancement. 
 - Some kind of support for parameters and encoding that doesn't involve hand-balling text is another (but without an associative array type to hold the parameters, seems messy (hello, PgSQL 9.2)).
 - Inevitably some web server will return gzip content (Content-Encoding) without being asked for it. Handling that gracefully would be good.
