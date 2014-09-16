@@ -151,6 +151,7 @@ Datum http_get(PG_FUNCTION_ARGS)
 	/* Processing */
 	CURL *http_handle = NULL; 
 	char *http_error_buffer = NULL;
+	struct curl_slist *headers = NULL;
 	stringbuffer_t *sb_data = stringbuffer_create();
 	stringbuffer_t *sb_headers = stringbuffer_create();
 	int http_return;
@@ -200,7 +201,7 @@ Datum http_get(PG_FUNCTION_ARGS)
 	curl_easy_setopt(http_handle, CURLOPT_CONNECTTIMEOUT, 1);
 
 	/* Set up the HTTP content encoding to gzip */
-	curl_easy_setopt(http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING);
+	/* curl_easy_setopt(http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING); */
 
 	/* Follow redirects, as many as 5 */
 	curl_easy_setopt(http_handle, CURLOPT_FOLLOWLOCATION, 1);
@@ -253,6 +254,148 @@ Datum http_get(PG_FUNCTION_ARGS)
 	/* Return */
 	PG_RETURN_DATUM(result);
 }
+
+Datum http_post(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(http_post);
+Datum http_post(PG_FUNCTION_ARGS)
+{
+	/* Input */
+	text *url = NULL;
+	text *data = NULL;
+	text *params = NULL;
+	text *text_contenttype = NULL;
+	
+	/* Processing */
+	CURL *http_handle = NULL; 
+	char *http_error_buffer = NULL;
+	stringbuffer_t *sb_data = stringbuffer_create();
+	stringbuffer_t *sb_headers = stringbuffer_create();
+	stringbuffer_t *sb_contenttype = stringbuffer_create();
+	int http_return;
+	long status;
+	char *content_type = NULL;
+	char status_str[128];
+
+	/* Output */
+	char **values;
+	AttInMetadata *attinmeta;
+	HeapTuple tuple;
+	Datum result;
+	/* We cannot get a null URL */
+	if ( ! PG_ARGISNULL(0) )
+		url = PG_GETARG_TEXT_P(0);
+	else
+		ereport(ERROR, (errmsg("A URL must be provided")));
+
+	if ( ! PG_ARGISNULL(2) )
+		data = PG_GETARG_TEXT_P(2);
+	else
+		ereport(ERROR, (errmsg("A DATA must be provided")));
+
+	if ( ! PG_ARGISNULL(3) )
+		contenttype = PG_GETARG_TEXT_P(3);
+	else
+		ereport(ERROR, (errmsg("content type must be provided")));
+	/* Load the parameters, if there are any */
+	if ( ! PG_ARGISNULL(1) )
+		params = PG_GETARG_TEXT_P(1);
+
+	/* Initialize CURL */
+	if ( ! (http_handle = curl_easy_init()) )
+		ereport(ERROR, (errmsg("Unable to initialize CURL")));
+
+	stringbuffer_append(sb_contenttype, 'Content-Type: ');
+	stringbuffer_append(sb_contenttype, text_to_cstring(text_contenttype));
+	headers = curl_slist_append(headers, stringbuffer_getstring(sb_contenttype));
+
+	stringbuffer_clear(sb_contenttype);
+	
+	stringbuffer_append(sb_contenttype, 'Accept: ');
+	stringbuffer_append(sb_contenttype, text_to_cstring(text_contenttype));
+	headers = curl_slist_append(headers, stringbuffer_getstring(sb_contenttype));
+
+	headers = curl_slist_append(headers, "charsets: utf-8");
+    curl_easy_setopt(http_handle, CURLOPT_HTTPHEADER, headers); 
+	/* Set the user agent */
+	curl_easy_setopt(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
+	
+	/* Set the target URL */
+	curl_easy_setopt(http_handle, CURLOPT_URL, text_to_cstring(url));
+
+	/* Set up the error buffer */
+	http_error_buffer = palloc(CURL_ERROR_SIZE);
+	curl_easy_setopt(http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
+	
+	
+	/* Set up the write-back function */
+	curl_easy_setopt(http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
+	
+	/* Set up the write-back buffer */
+	curl_easy_setopt(http_handle, CURLOPT_WRITEDATA, (void*)sb_data);
+	curl_easy_setopt(http_handle, CURLOPT_WRITEHEADER, (void*)sb_headers);
+	
+	/* Set up the HTTP timeout */
+	curl_easy_setopt(http_handle, CURLOPT_TIMEOUT, 5);
+	curl_easy_setopt(http_handle, CURLOPT_CONNECTTIMEOUT, 1);
+
+	/* Set up the HTTP content encoding to gzip */
+	/*curl_easy_setopt(http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING);*/
+
+	/* Follow redirects, as many as 5 */
+	curl_easy_setopt(http_handle, CURLOPT_FOLLOWLOCATION, 1);
+	curl_easy_setopt(http_handle, CURLOPT_MAXREDIRS, 5);
+
+	curl_easy_setopt(http_handle, CURLOPT_POST, 1);
+	curl_easy_setopt(http_handle, CURLOPT_POSTFIELDS, text_to_cstring(data));
+	
+	/* Run it! */ 
+	http_return = curl_easy_perform(http_handle);
+//	elog(NOTICE, "Queried %s", text_to_cstring(url));
+
+	/* Write out an error on failure */
+	if ( http_return )
+	{
+		curl_easy_cleanup(http_handle);
+		ereport(ERROR, (errmsg("CURL: %s", http_error_buffer)));
+	}
+
+	/* Read the metadata from the handle directly */
+	if ( (CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_RESPONSE_CODE, &status)) ||
+	     (CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_CONTENT_TYPE, &content_type)) )
+	{
+		curl_easy_cleanup(http_handle);
+		ereport(ERROR, (errmsg("CURL: Error in curl_easy_getinfo")));
+	}
+	
+	/* Print the status code out */
+	snprintf(status_str, sizeof(status_str), "%ld", status);
+	
+	/* Make sure the content type is not null */
+	if ( ! content_type )
+		content_type = "";
+	
+	/* Prepare our return object */
+	values = palloc(sizeof(char*) * 4);
+	values[0] = status_str;
+	values[1] = content_type;
+	values[2] = (char*)stringbuffer_getstring(sb_headers);
+	values[3] = (char*)stringbuffer_getstring(sb_data);
+
+	/* Flip cstring values into a PgSQL tuple */
+	attinmeta = TupleDescGetAttInMetadata(RelationNameGetTupleDesc("http_response"));
+	tuple = BuildTupleFromCStrings(attinmeta, values);
+	result = HeapTupleGetDatum(tuple);
+	
+	/* Clean up */
+	curl_easy_cleanup(http_handle);
+	pfree(http_error_buffer);
+	stringbuffer_destroy(sb_headers);
+	stringbuffer_destroy(sb_data);
+
+	/* Return */
+	PG_RETURN_DATUM(result);
+}
+
 
 /* URL Encode Escape Chars */
 /* 48-57 (0-9) 65-90 (A-Z) 97-122 (a-z) 95 (_) 45 (-) */
