@@ -270,11 +270,13 @@ Datum http_post(PG_FUNCTION_ARGS)
 	char *http_error_buffer = NULL;
 	stringbuffer_t *sb_data = stringbuffer_create();
 	stringbuffer_t *sb_headers = stringbuffer_create();
-	stringbuffer_t *sb_contenttype = stringbuffer_create();
+	char contenttype[1024] = "";
+	char acceptheader[1024] = "";
 	int http_return;
 	long status;
 	char *content_type = NULL;
 	char status_str[128];
+	struct curl_slist *headers = NULL;
 
 	/* Output */
 	char **values;
@@ -293,7 +295,7 @@ Datum http_post(PG_FUNCTION_ARGS)
 		ereport(ERROR, (errmsg("A DATA must be provided")));
 
 	if ( ! PG_ARGISNULL(3) )
-		contenttype = PG_GETARG_TEXT_P(3);
+		text_contenttype = PG_GETARG_TEXT_P(3);
 	else
 		ereport(ERROR, (errmsg("content type must be provided")));
 	/* Load the parameters, if there are any */
@@ -304,15 +306,13 @@ Datum http_post(PG_FUNCTION_ARGS)
 	if ( ! (http_handle = curl_easy_init()) )
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
 
-	stringbuffer_append(sb_contenttype, 'Content-Type: ');
-	stringbuffer_append(sb_contenttype, text_to_cstring(text_contenttype));
-	headers = curl_slist_append(headers, stringbuffer_getstring(sb_contenttype));
+	strcat(contenttype, "Content-Type: ");
+	strcat(contenttype, text_to_cstring(text_contenttype));
+	headers = curl_slist_append(headers, contenttype);
 
-	stringbuffer_clear(sb_contenttype);
-	
-	stringbuffer_append(sb_contenttype, 'Accept: ');
-	stringbuffer_append(sb_contenttype, text_to_cstring(text_contenttype));
-	headers = curl_slist_append(headers, stringbuffer_getstring(sb_contenttype));
+	strcat(acceptheader, "Accept: ");
+	strcat(acceptheader, text_to_cstring(text_contenttype));
+	headers = curl_slist_append(headers, acceptheader);
 
 	headers = curl_slist_append(headers, "charsets: utf-8");
     curl_easy_setopt(http_handle, CURLOPT_HTTPHEADER, headers); 
@@ -468,10 +468,4 @@ Datum urlencode(PG_FUNCTION_ARGS)
 	
 	PG_RETURN_TEXT_P(cstring_to_text(str_out));
 }
-	
-	
-
-
-
-
 
