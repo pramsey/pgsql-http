@@ -56,6 +56,21 @@ This extension is for that.
 	   Content-Language: en\r                                                      +
 	   \r                                                                          +
 	  (1 row)
+	  
+	  SELECT headers FROM http_post('http://localhost:8080/elastic/item/', null, '{
+			    "itemid" : "1",
+			    "insert_date" : "2014-09-17T00:00:00",
+			    "title" : "New item 1"}', 'application/json');
+		                     headers
+		------------------------------------------------
+		 HTTP/1.1 200 OK\r                             +
+		 Server: Apache-Coyote/1.1\r                   +
+		 Content-Type: application/json;charset=UTF-8\r+
+		 Transfer-Encoding: chunked\r                  +
+		 Date: Thu, 18 Sep 2014 15:03:21 GMT\r         +
+		 \r                                            +
+		 
+		(1 row)
 
 ## Installation
 
