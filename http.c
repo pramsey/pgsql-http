@@ -321,6 +321,8 @@ Datum http_post(PG_FUNCTION_ARGS)
     curl_easy_setopt(http_handle, CURLOPT_HTTPHEADER, headers); 
 	/* Set the user agent */
 	curl_easy_setopt(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
+
+	curl_easy_setopt(http_handle, CURLOPT_FORBID_REUSE, 1);
 	
 	/* Set the target URL */
 	curl_easy_setopt(http_handle, CURLOPT_URL, text_to_cstring(url));
