@@ -179,6 +179,10 @@ Datum http_get(PG_FUNCTION_ARGS)
 	if ( ! (http_handle = curl_easy_init()) )
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
 
+	headers = curl_slist_append(headers, "Connection: close");
+
+	curl_easy_setopt(http_handle, CURLOPT_HTTPHEADER, headers);
+
 	/* Set the user agent */
 	curl_easy_setopt(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
 	
