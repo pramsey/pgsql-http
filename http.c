@@ -274,7 +274,7 @@ Datum http_post(PG_FUNCTION_ARGS)
 	char *http_error_buffer = NULL;
 	stringbuffer_t *sb_data = stringbuffer_create();
 	stringbuffer_t *sb_headers = stringbuffer_create();
-    stringbuffer_t *sb_contenttype = stringbuffer_create();
+	stringbuffer_t *sb_contenttype = stringbuffer_create();
 	int http_return;
 	long status;
 	char *content_type = NULL;
@@ -309,21 +309,21 @@ Datum http_post(PG_FUNCTION_ARGS)
 	if ( ! (http_handle = curl_easy_init()) )
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
 
-    stringbuffer_append(sb_contenttype, "Content-Type: ");
+	stringbuffer_append(sb_contenttype, "Content-Type: ");
 	stringbuffer_append(sb_contenttype, text_to_cstring(text_contenttype));
 	headers = curl_slist_append(headers, stringbuffer_getstring(sb_contenttype));
     
-    stringbuffer_clear(sb_contenttype);
+	stringbuffer_clear(sb_contenttype);
 
-    stringbuffer_append(sb_contenttype, "Accept: ");
+	stringbuffer_append(sb_contenttype, "Accept: ");
 	stringbuffer_append(sb_contenttype, text_to_cstring(text_contenttype));
 	headers = curl_slist_append(headers, stringbuffer_getstring(sb_contenttype));
 	headers = curl_slist_append(headers, "Connection: close");
-    stringbuffer_destroy(sb_contenttype);
+	stringbuffer_destroy(sb_contenttype);
  
 
 	headers = curl_slist_append(headers, "charsets: utf-8");
-    curl_easy_setopt(http_handle, CURLOPT_HTTPHEADER, headers); 
+	curl_easy_setopt(http_handle, CURLOPT_HTTPHEADER, headers); 
 	/* Set the user agent */
 	curl_easy_setopt(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
 
