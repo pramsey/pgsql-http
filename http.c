@@ -51,6 +51,7 @@
 /* Set up PgSQL */
 PG_MODULE_MAGIC;
 
+
 /* Startup */
 void _PG_init(void);
 void _PG_init(void)
@@ -135,6 +136,18 @@ header_value(const char* header_str, const char* header_name)
 	return return_str;
 }
 
+	
+/* Utility macro to try a setopt and catch an error */
+#define CURL_SETOPT(handle, opt, value) do { \
+	err = curl_easy_setopt((handle), (opt), (value)); \
+	if ( err != CURLE_OK ) \
+	{ \
+		elog(ERROR, "CURL error: %s", curl_easy_strerror(err)); \
+		PG_RETURN_NULL(); \
+	} \
+	} while (0);
+
+
 /**
 * Our only function, currently only does a get. Could take in parameters
 * if we wanted to get fancy and do HTTP URL encoding. Might be better to
@@ -149,7 +162,8 @@ Datum http_get(PG_FUNCTION_ARGS)
 	text *params = NULL;
 	
 	/* Processing */
-	CURL *http_handle = NULL; 
+	CURL *http_handle = NULL;
+	CURLcode err; 
 	char *http_error_buffer = NULL;
 	struct curl_slist *headers = NULL;
 	stringbuffer_t *sb_data = stringbuffer_create();
@@ -179,37 +193,37 @@ Datum http_get(PG_FUNCTION_ARGS)
 	if ( ! (http_handle = curl_easy_init()) )
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
 
+	/* Add a close option to the headers to avoid open network sockets */
 	headers = curl_slist_append(headers, "Connection: close");
-
-	curl_easy_setopt(http_handle, CURLOPT_HTTPHEADER, headers);
+	CURL_SETOPT(http_handle, CURLOPT_HTTPHEADER, headers);
 
 	/* Set the user agent */
-	curl_easy_setopt(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
+	CURL_SETOPT(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
 	
 	/* Set the target URL */
-	curl_easy_setopt(http_handle, CURLOPT_URL, text_to_cstring(url));
+	CURL_SETOPT(http_handle, CURLOPT_URL, text_to_cstring(url));
 
 	/* Set up the error buffer */
 	http_error_buffer = palloc(CURL_ERROR_SIZE);
-	curl_easy_setopt(http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
+	CURL_SETOPT(http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
 	
 	/* Set up the write-back function */
-	curl_easy_setopt(http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
+	CURL_SETOPT(http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
 	
 	/* Set up the write-back buffer */
-	curl_easy_setopt(http_handle, CURLOPT_WRITEDATA, (void*)sb_data);
-	curl_easy_setopt(http_handle, CURLOPT_WRITEHEADER, (void*)sb_headers);
+	CURL_SETOPT(http_handle, CURLOPT_WRITEDATA, (void*)sb_data);
+	CURL_SETOPT(http_handle, CURLOPT_WRITEHEADER, (void*)sb_headers);
 	
 	/* Set up the HTTP timeout */
-	curl_easy_setopt(http_handle, CURLOPT_TIMEOUT, 5);
-	curl_easy_setopt(http_handle, CURLOPT_CONNECTTIMEOUT, 1);
+	CURL_SETOPT(http_handle, CURLOPT_TIMEOUT, 5);
+	CURL_SETOPT(http_handle, CURLOPT_CONNECTTIMEOUT, 1);
 
 	/* Set up the HTTP content encoding to gzip */
 	/* curl_easy_setopt(http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING); */
 
 	/* Follow redirects, as many as 5 */
-	curl_easy_setopt(http_handle, CURLOPT_FOLLOWLOCATION, 1);
-	curl_easy_setopt(http_handle, CURLOPT_MAXREDIRS, 5);
+	CURL_SETOPT(http_handle, CURLOPT_FOLLOWLOCATION, 1);
+	CURL_SETOPT(http_handle, CURLOPT_MAXREDIRS, 5);
 	
 	/* Run it! */ 
 	http_return = curl_easy_perform(http_handle);
@@ -274,15 +288,16 @@ Datum http_post(PG_FUNCTION_ARGS)
 	
 	/* Processing */
 	CURL *http_handle = NULL; 
+	CURLcode err; 
 	char *http_error_buffer = NULL;
 	stringbuffer_t *sb_data = stringbuffer_create();
 	stringbuffer_t *sb_headers = stringbuffer_create();
-	stringbuffer_t *sb_contenttype = stringbuffer_create();
 	int http_return;
 	long status;
 	char *content_type = NULL;
 	char status_str[128];
 	char buffer[1024];
+	size_t buffersz = sizeof(buffer);
 	char *str;
 	struct curl_slist *headers = NULL;
 
@@ -315,49 +330,52 @@ Datum http_post(PG_FUNCTION_ARGS)
 	if ( ! PG_ARGISNULL(1) )
 		params = PG_GETARG_TEXT_P(1);
 
+	/* Post requires content type and accept headers */
 	str = text_to_cstring(text_contenttype);
-	snprintf(buffer, 1024, "Content-Type: %s", str);
+	snprintf(buffer, buffersz, "Content-Type: %s", str);
 	headers = curl_slist_append(headers, buffer);
-	snprintf(buffer, 1024, "Accept: %s", str);
+	snprintf(buffer, buffersz, "Accept: %s", str);
 	headers = curl_slist_append(headers, buffer);
 	headers = curl_slist_append(headers, "Connection: close");
 	headers = curl_slist_append(headers, "charsets: utf-8");
 	pfree(str);
 	
-	curl_easy_setopt(http_handle, CURLOPT_HTTPHEADER, headers); 
-	/* Set the user agent */
-	curl_easy_setopt(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
+	CURL_SETOPT(http_handle, CURLOPT_HTTPHEADER, headers); 
 
-	curl_easy_setopt(http_handle, CURLOPT_FORBID_REUSE, 1);
+	/* Set the user agent */
+	CURL_SETOPT(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
+
+	/* Keep sockets from being held open */
+	CURL_SETOPT(http_handle, CURLOPT_FORBID_REUSE, 1);
 	
 	/* Set the target URL */
-	curl_easy_setopt(http_handle, CURLOPT_URL, text_to_cstring(url));
+	CURL_SETOPT(http_handle, CURLOPT_URL, text_to_cstring(url));
 
 	/* Set up the error buffer */
 	http_error_buffer = palloc(CURL_ERROR_SIZE);
-	curl_easy_setopt(http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
+	CURL_SETOPT(http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
 	
 	
 	/* Set up the write-back function */
-	curl_easy_setopt(http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
+	CURL_SETOPT(http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
 	
 	/* Set up the write-back buffer */
-	curl_easy_setopt(http_handle, CURLOPT_WRITEDATA, (void*)sb_data);
-	curl_easy_setopt(http_handle, CURLOPT_WRITEHEADER, (void*)sb_headers);
+	CURL_SETOPT(http_handle, CURLOPT_WRITEDATA, (void*)sb_data);
+	CURL_SETOPT(http_handle, CURLOPT_WRITEHEADER, (void*)sb_headers);
 	
 	/* Set up the HTTP timeout */
-	curl_easy_setopt(http_handle, CURLOPT_TIMEOUT, 5);
-	curl_easy_setopt(http_handle, CURLOPT_CONNECTTIMEOUT, 1);
+	CURL_SETOPT(http_handle, CURLOPT_TIMEOUT, 5);
+	CURL_SETOPT(http_handle, CURLOPT_CONNECTTIMEOUT, 1);
 
 	/* Set up the HTTP content encoding to gzip */
 	/*curl_easy_setopt(http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING);*/
 
 	/* Follow redirects, as many as 5 */
-	curl_easy_setopt(http_handle, CURLOPT_FOLLOWLOCATION, 1);
-	curl_easy_setopt(http_handle, CURLOPT_MAXREDIRS, 5);
+	CURL_SETOPT(http_handle, CURLOPT_FOLLOWLOCATION, 1);
+	CURL_SETOPT(http_handle, CURLOPT_MAXREDIRS, 5);
 
-	curl_easy_setopt(http_handle, CURLOPT_POST, 1);
-	curl_easy_setopt(http_handle, CURLOPT_POSTFIELDS, text_to_cstring(data));
+	CURL_SETOPT(http_handle, CURLOPT_POST, 1);
+	CURL_SETOPT(http_handle, CURLOPT_POSTFIELDS, text_to_cstring(data));
 	
 	/* Run it! */ 
 	http_return = curl_easy_perform(http_handle);
@@ -368,7 +386,7 @@ Datum http_post(PG_FUNCTION_ARGS)
 	{
 		curl_easy_cleanup(http_handle);
 		curl_slist_free_all(headers);
-		ereport(ERROR, (errmsg("CURL: %s", http_error_buffer)));
+		ereport(ERROR, (errmsg("%s", http_error_buffer)));
 	}
 
 	/* Read the metadata from the handle directly */
