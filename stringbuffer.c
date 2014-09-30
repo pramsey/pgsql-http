@@ -203,7 +203,7 @@ static int
 stringbuffer_avprintf(stringbuffer_t *s, const char *fmt, va_list ap)
 {
 	int maxlen = (s->capacity - (s->str_end - s->str_start));
-	size_t len = 0; /* Length of the output */
+	int len = 0; /* Length of the output */
 	va_list ap2;
 
 	/* Make a copy of the variadic arguments, in case we need to print twice */
@@ -213,7 +213,7 @@ stringbuffer_avprintf(stringbuffer_t *s, const char *fmt, va_list ap)
 	va_end(ap2);
 
 	/* Propogate errors up */
-	if ( len < 0 ) 
+	if ( len < 0 )
 		return len;
 
 	/* We didn't have enough space! */

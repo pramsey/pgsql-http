@@ -213,12 +213,13 @@ Datum http_get(PG_FUNCTION_ARGS)
 	
 	/* Run it! */ 
 	http_return = curl_easy_perform(http_handle);
-//	elog(NOTICE, "Queried %s", text_to_cstring(url));
+	elog(DEBUG2, "pgsql-http: queried %s", text_to_cstring(url));
 
 	/* Write out an error on failure */
 	if ( http_return )
 	{
 		curl_easy_cleanup(http_handle);
+		curl_slist_free_all(headers);
 		ereport(ERROR, (errmsg("CURL: %s", http_error_buffer)));
 	}
 
@@ -227,6 +228,7 @@ Datum http_get(PG_FUNCTION_ARGS)
 	     (CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_CONTENT_TYPE, &content_type)) )
 	{
 		curl_easy_cleanup(http_handle);
+		curl_slist_free_all(headers);
 		ereport(ERROR, (errmsg("CURL: Error in curl_easy_getinfo")));
 	}
 	
@@ -251,6 +253,7 @@ Datum http_get(PG_FUNCTION_ARGS)
 	
 	/* Clean up */
 	curl_easy_cleanup(http_handle);
+	curl_slist_free_all(headers);
 	pfree(http_error_buffer);
 	stringbuffer_destroy(sb_headers);
 	stringbuffer_destroy(sb_data);
@@ -279,6 +282,8 @@ Datum http_post(PG_FUNCTION_ARGS)
 	long status;
 	char *content_type = NULL;
 	char status_str[128];
+	char buffer[1024];
+	char *str;
 	struct curl_slist *headers = NULL;
 
 	/* Output */
@@ -301,28 +306,24 @@ Datum http_post(PG_FUNCTION_ARGS)
 		text_contenttype = PG_GETARG_TEXT_P(3);
 	else
 		ereport(ERROR, (errmsg("content type must be provided")));
-	/* Load the parameters, if there are any */
-	if ( ! PG_ARGISNULL(1) )
-		params = PG_GETARG_TEXT_P(1);
 
 	/* Initialize CURL */
 	if ( ! (http_handle = curl_easy_init()) )
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
 
-	stringbuffer_append(sb_contenttype, "Content-Type: ");
-	stringbuffer_append(sb_contenttype, text_to_cstring(text_contenttype));
-	headers = curl_slist_append(headers, stringbuffer_getstring(sb_contenttype));
-    
-	stringbuffer_clear(sb_contenttype);
+	/* Load the parameters, if there are any */
+	if ( ! PG_ARGISNULL(1) )
+		params = PG_GETARG_TEXT_P(1);
 
-	stringbuffer_append(sb_contenttype, "Accept: ");
-	stringbuffer_append(sb_contenttype, text_to_cstring(text_contenttype));
-	headers = curl_slist_append(headers, stringbuffer_getstring(sb_contenttype));
+	str = text_to_cstring(text_contenttype);
+	snprintf(buffer, 1024, "Content-Type: %s", str);
+	headers = curl_slist_append(headers, buffer);
+	snprintf(buffer, 1024, "Accept: %s", str);
+	headers = curl_slist_append(headers, buffer);
 	headers = curl_slist_append(headers, "Connection: close");
-	stringbuffer_destroy(sb_contenttype);
- 
-
 	headers = curl_slist_append(headers, "charsets: utf-8");
+	pfree(str);
+	
 	curl_easy_setopt(http_handle, CURLOPT_HTTPHEADER, headers); 
 	/* Set the user agent */
 	curl_easy_setopt(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
@@ -360,12 +361,13 @@ Datum http_post(PG_FUNCTION_ARGS)
 	
 	/* Run it! */ 
 	http_return = curl_easy_perform(http_handle);
-//	elog(NOTICE, "Queried %s", text_to_cstring(url));
+	elog(DEBUG2, "pgsql-http: queried %s", text_to_cstring(url));
 
 	/* Write out an error on failure */
 	if ( http_return )
 	{
 		curl_easy_cleanup(http_handle);
+		curl_slist_free_all(headers);
 		ereport(ERROR, (errmsg("CURL: %s", http_error_buffer)));
 	}
 
@@ -374,6 +376,7 @@ Datum http_post(PG_FUNCTION_ARGS)
 	     (CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_CONTENT_TYPE, &content_type)) )
 	{
 		curl_easy_cleanup(http_handle);
+		curl_slist_free_all(headers);
 		ereport(ERROR, (errmsg("CURL: Error in curl_easy_getinfo")));
 	}
 	
@@ -398,6 +401,7 @@ Datum http_post(PG_FUNCTION_ARGS)
 	
 	/* Clean up */
 	curl_easy_cleanup(http_handle);
+	curl_slist_free_all(headers);
 	pfree(http_error_buffer);
 	stringbuffer_destroy(sb_headers);
 	stringbuffer_destroy(sb_data);
