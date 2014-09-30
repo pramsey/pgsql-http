@@ -179,6 +179,10 @@ Datum http_get(PG_FUNCTION_ARGS)
 	if ( ! (http_handle = curl_easy_init()) )
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
 
+	headers = curl_slist_append(headers, "Connection: close");
+
+	curl_easy_setopt(http_handle, CURLOPT_HTTPHEADER, headers);
+
 	/* Set the user agent */
 	curl_easy_setopt(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
 	
@@ -314,6 +318,7 @@ Datum http_post(PG_FUNCTION_ARGS)
     stringbuffer_append(sb_contenttype, "Accept: ");
 	stringbuffer_append(sb_contenttype, text_to_cstring(text_contenttype));
 	headers = curl_slist_append(headers, stringbuffer_getstring(sb_contenttype));
+	headers = curl_slist_append(headers, "Connection: close");
     stringbuffer_destroy(sb_contenttype);
  
 
@@ -321,6 +326,8 @@ Datum http_post(PG_FUNCTION_ARGS)
     curl_easy_setopt(http_handle, CURLOPT_HTTPHEADER, headers); 
 	/* Set the user agent */
 	curl_easy_setopt(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
+
+	curl_easy_setopt(http_handle, CURLOPT_FORBID_REUSE, 1);
 	
 	/* Set the target URL */
 	curl_easy_setopt(http_handle, CURLOPT_URL, text_to_cstring(url));
