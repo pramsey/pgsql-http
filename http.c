@@ -314,6 +314,7 @@ Datum http_post(PG_FUNCTION_ARGS)
     stringbuffer_append(sb_contenttype, "Accept: ");
 	stringbuffer_append(sb_contenttype, text_to_cstring(text_contenttype));
 	headers = curl_slist_append(headers, stringbuffer_getstring(sb_contenttype));
+	headers = curl_slist_append(headers, "Connection: close");
     stringbuffer_destroy(sb_contenttype);
  
 
