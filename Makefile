@@ -1,6 +1,6 @@
 
 MODULE_big = http
-OBJS = http.o stringbuffer.o
+OBJS = http.o
 EXTENSION = http
 DATA = http--1.0.sql
 REGRESS = http

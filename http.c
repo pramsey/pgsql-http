@@ -41,12 +41,10 @@
 #include <fmgr.h>
 #include <funcapi.h>
 #include <utils/builtins.h>
+#include <lib/stringinfo.h>
 
 /* CURL */
 #include <curl/curl.h>
-
-/* Internal */
-#include "stringbuffer.h"
 
 /* Set up PgSQL */
 PG_MODULE_MAGIC;
@@ -75,8 +73,8 @@ static size_t
 http_writeback(void *contents, size_t size, size_t nmemb, void *userp)
 {
 	size_t realsize = size * nmemb;
-	stringbuffer_t *sb = (stringbuffer_t*)userp;
-	stringbuffer_write(sb, (char*)contents, realsize);
+	StringInfo si = (StringInfo)userp;
+	appendBinaryStringInfo(si, (const char*)contents, (int)realsize);	
 	return realsize;
 }
 
@@ -148,6 +146,16 @@ header_value(const char* header_str, const char* header_name)
 	} while (0);
 
 
+static void freeStringInfo(StringInfo si)
+{
+	if ( si ) 
+	{
+		if ( si->data ) 
+			pfree(si->data);
+		pfree(si);
+	}		
+}
+
 /**
 * Our only function, currently only does a get. Could take in parameters
 * if we wanted to get fancy and do HTTP URL encoding. Might be better to
@@ -165,9 +173,10 @@ Datum http_get(PG_FUNCTION_ARGS)
 	CURL *http_handle = NULL;
 	CURLcode err; 
 	char *http_error_buffer = NULL;
-	struct curl_slist *headers = NULL;
-	stringbuffer_t *sb_data = stringbuffer_create();
-	stringbuffer_t *sb_headers = stringbuffer_create();
+	struct curl_slist *headers = NULL;	
+	StringInfo si_data = makeStringInfo();
+	StringInfo si_headers = makeStringInfo();
+	
 	int http_return;
 	long status;
 	char *content_type = NULL;
@@ -211,8 +220,8 @@ Datum http_get(PG_FUNCTION_ARGS)
 	CURL_SETOPT(http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
 	
 	/* Set up the write-back buffer */
-	CURL_SETOPT(http_handle, CURLOPT_WRITEDATA, (void*)sb_data);
-	CURL_SETOPT(http_handle, CURLOPT_WRITEHEADER, (void*)sb_headers);
+	CURL_SETOPT(http_handle, CURLOPT_WRITEDATA, (void*)si_data);
+	CURL_SETOPT(http_handle, CURLOPT_WRITEHEADER, (void*)si_headers);
 	
 	/* Set up the HTTP timeout */
 	CURL_SETOPT(http_handle, CURLOPT_TIMEOUT, 5);
@@ -257,8 +266,9 @@ Datum http_get(PG_FUNCTION_ARGS)
 	values = palloc(sizeof(char*) * 4);
 	values[0] = status_str;
 	values[1] = content_type;
-	values[2] = (char*)stringbuffer_getstring(sb_headers);
-	values[3] = (char*)stringbuffer_getstring(sb_data);
+	values[2] = si_headers->data;
+	values[3] = si_data->data;
+	
 
 	/* Flip cstring values into a PgSQL tuple */
 	attinmeta = TupleDescGetAttInMetadata(RelationNameGetTupleDesc("http_response"));
@@ -269,8 +279,8 @@ Datum http_get(PG_FUNCTION_ARGS)
 	curl_easy_cleanup(http_handle);
 	curl_slist_free_all(headers);
 	pfree(http_error_buffer);
-	stringbuffer_destroy(sb_headers);
-	stringbuffer_destroy(sb_data);
+	freeStringInfo(si_headers);
+	freeStringInfo(si_data);
 
 	/* Return */
 	PG_RETURN_DATUM(result);
@@ -289,9 +299,10 @@ Datum http_post(PG_FUNCTION_ARGS)
 	/* Processing */
 	CURL *http_handle = NULL; 
 	CURLcode err; 
-	char *http_error_buffer = NULL;
-	stringbuffer_t *sb_data = stringbuffer_create();
-	stringbuffer_t *sb_headers = stringbuffer_create();
+	char *http_error_buffer = NULL;	
+	StringInfo si_data = makeStringInfo();
+	StringInfo si_headers = makeStringInfo();
+	
 	int http_return;
 	long status;
 	char *content_type = NULL;
@@ -360,8 +371,8 @@ Datum http_post(PG_FUNCTION_ARGS)
 	CURL_SETOPT(http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
 	
 	/* Set up the write-back buffer */
-	CURL_SETOPT(http_handle, CURLOPT_WRITEDATA, (void*)sb_data);
-	CURL_SETOPT(http_handle, CURLOPT_WRITEHEADER, (void*)sb_headers);
+	CURL_SETOPT(http_handle, CURLOPT_WRITEDATA, (void*)si_data);
+	CURL_SETOPT(http_handle, CURLOPT_WRITEHEADER, (void*)si_headers);
 	
 	/* Set up the HTTP timeout */
 	CURL_SETOPT(http_handle, CURLOPT_TIMEOUT, 5);
@@ -409,8 +420,8 @@ Datum http_post(PG_FUNCTION_ARGS)
 	values = palloc(sizeof(char*) * 4);
 	values[0] = status_str;
 	values[1] = content_type;
-	values[2] = (char*)stringbuffer_getstring(sb_headers);
-	values[3] = (char*)stringbuffer_getstring(sb_data);
+	values[2] = si_headers->data;
+	values[3] = si_data->data;
 
 	/* Flip cstring values into a PgSQL tuple */
 	attinmeta = TupleDescGetAttInMetadata(RelationNameGetTupleDesc("http_response"));
@@ -420,9 +431,9 @@ Datum http_post(PG_FUNCTION_ARGS)
 	/* Clean up */
 	curl_easy_cleanup(http_handle);
 	curl_slist_free_all(headers);
-	pfree(http_error_buffer);
-	stringbuffer_destroy(sb_headers);
-	stringbuffer_destroy(sb_data);
+	pfree(http_error_buffer);	
+	freeStringInfo(si_headers);
+	freeStringInfo(si_data);
 
 	/* Return */
 	PG_RETURN_DATUM(result);
