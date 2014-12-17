@@ -136,64 +136,6 @@ http_readback(void *buffer, size_t size, size_t nitems, void *instream)
 	return realsize;
 }
 
-
-/**
-* Uses regex to find the value of a header. Very limited pattern right now, only
-* searches for an alphanumeric string after the header name. Should be extended to
-* search out to the end of the header line (\n) and optionally also to remove " marks.
-*/
-#if 0
-static char*
-header_value(const char* header_str, const char* header_name)
-{
-	const char *regex_template = "%s: \\([[:alnum:]+/-]\\{1,\\}\\)";
-	regex_t regex;
-	char regex_err_buf[128];
-	char regex_buf[256];
-	regmatch_t pmatch[2];
-	int reti;
-	char *return_str;
-	
-	/* Prepare our regex string */
-	reti = snprintf(regex_buf, sizeof(regex_buf), regex_template, header_name);
-	if ( reti < 0 )
-		ereport(ERROR, (errmsg("Could not prepare regex string")));
-
-	/* Compile the regular expression */
-	reti = regcomp(&regex, regex_buf, REG_ICASE);
-	if ( reti )
-		ereport(ERROR, (errmsg("Could not compile regex")));
-
-	/* Execute regular expression */
-	reti = regexec(&regex, header_str, 2, pmatch, 0);
-	if ( ! reti )
-	{
-		/* Got a match */
-		int so = pmatch[1].rm_so;
-		int eo = pmatch[1].rm_eo;
-		return_str = palloc(eo-so+1);
-		memcpy(return_str, header_str + so, eo-so);
-		return_str[eo-so] = '\0';
-		regfree(&regex);
-		return return_str;
-	}
-	else if( reti == REG_NOMATCH )
-	{
-		ereport(ERROR, (errmsg("Could not find %s header", header_name)));
-	}
-	else
-	{
-		regerror(reti, &regex, regex_err_buf, sizeof(regex_err_buf));
-		ereport(ERROR, (errmsg("Regex match failed: %s\n", regex_err_buf)));
-	}
-
-	/* Free compiled regular expression if you want to use the regex_t again */
-	regfree(&regex);
-	return_str = palloc(1);
-	return_str[0] = '\0';
-	return return_str;
-}
-#endif
 	
 /* Utility macro to try a setopt and catch an error */
 #define CURL_SETOPT(handle, opt, value) do { \
@@ -206,7 +148,9 @@ header_value(const char* header_str, const char* header_name)
 	} while (0);
 
 
-
+/**
+*  Convert a request type string into the appropriate enumeration value.
+*/
 static http_method 
 request_type(const char *method)
 {
@@ -222,6 +166,9 @@ request_type(const char *method)
 		return HTTP_GET;
 }
 
+/**
+* Given a field name and value, output a http_header tuple.
+*/
 static Datum
 header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
 {
@@ -245,6 +192,9 @@ header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
 	return HeapTupleGetDatum(header_tuple);		
 }
 
+/**
+* Lookup the type Oid from a type name string.
+*/
 static Oid
 lookup_type_oid(const char *typname)
 {
@@ -256,6 +206,9 @@ lookup_type_oid(const char *typname)
 		return InvalidOid;	
 }
 
+/**
+* Quick and dirty, remove all \r from a StringInfo.
+*/
 static void
 string_info_remove_cr(StringInfo si)
 {
@@ -272,6 +225,10 @@ string_info_remove_cr(StringInfo si)
 	return;
 }
 
+/**
+* Convert a string of headers separated by newlines/CRs into an
+* array of http_header tuples.
+*/
 static ArrayType *
 header_string_to_array(StringInfo si)
 {
@@ -342,7 +299,10 @@ header_string_to_array(StringInfo si)
 	return construct_array(arr_elems, arr_nelems, elem_type, elem_len, elem_byval, elem_align);	
 }
 
-
+/**
+* Master HTTP request function, takes in an http_request tuple and outputs
+* an http_response tuple.
+*/
 Datum http_request(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(http_request);
 Datum http_request(PG_FUNCTION_ARGS)
@@ -620,6 +580,11 @@ static int chars_to_not_encode[] = {
 };
 
 
+
+/**
+* Utility function for users building URL encoded requests, applies
+* standard URL encoding to an input string.
+*/
 Datum urlencode(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(urlencode);
 Datum urlencode(PG_FUNCTION_ARGS)
@@ -630,7 +595,7 @@ Datum urlencode(PG_FUNCTION_ARGS)
 	int i, rv;
 	
 	/* Point into the string */
-	str_in = (char*)txt + VARHDRSZ;
+	str_in = VARDATA(txt);
 	
 	/* Prepare the output string */
 	str_out = palloc0(txt_size * 4);

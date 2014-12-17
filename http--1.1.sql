@@ -39,11 +39,6 @@ CREATE OR REPLACE FUNCTION http_header (field VARCHAR, value VARCHAR)
     AS $$ SELECT field, value $$ 
     LANGUAGE 'sql';
 
-CREATE OR REPLACE FUNCTION http_request(method http_method, uri VARCHAR, headers http_header[] DEFAULT NULL, content_type content_type DEFAULT NULL, content VARCHAR DEFAULT NULL)
-    RETURNS http_request
-    AS $$ SELECT method, uri, headers, content_type, content $$
-    LANGUAGE 'sql'; 
-
 CREATE OR REPLACE FUNCTION http(request http_request)
     RETURNS http_response
     AS 'MODULE_PATHNAME', 'http_request'
