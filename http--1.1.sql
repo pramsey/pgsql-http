@@ -70,3 +70,13 @@ CREATE OR REPLACE FUNCTION urlencode(string VARCHAR)
 	LANGUAGE 'c'
 	IMMUTABLE STRICT;
 
+-- Version 1.0 signatures, deprecated, retained for backwards compatibility.
+CREATE OR REPLACE FUNCTION http_get(url VARCHAR, params VARCHAR DEFAULT NULL)
+	RETURNS http_response
+    AS $$ SELECT http_get(url) $$
+	LANGUAGE 'sql';
+
+CREATE OR REPLACE FUNCTION http_post(url VARCHAR, params VARCHAR, data VARCHAR, contenttype VARCHAR DEFAULT NULL)
+	RETURNS http_response
+    AS $$ SELECT http_post(url, content, contenttype) $$
+	LANGUAGE 'sql';
