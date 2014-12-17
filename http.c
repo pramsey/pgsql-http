@@ -42,8 +42,12 @@
 #include <funcapi.h>
 #include <access/htup.h>
 #include <access/htup_details.h>
+#include <catalog/namespace.h>
 #include <lib/stringinfo.h>
+#include <utils/array.h>
 #include <utils/builtins.h>
+#include <utils/lsyscache.h>
+#include <utils/syscache.h>
 #include <utils/typcache.h>
 
 /* CURL */
@@ -63,12 +67,27 @@ typedef enum {
 
 /* Components (and postitions) of the http_request tuple type */
 enum {
-	REQ_METHOD = 0, 
+	REQ_METHOD = 0,
 	REQ_URI = 1,
 	REQ_HEADERS = 2,
 	REQ_CONTENT_TYPE = 3,
 	REQ_CONTENT = 4
 } http_request_type;
+
+/* Components (and postitions) of the http_response tuple type */
+enum {
+	RESP_STATUS = 0,
+	RESP_CONTENT_TYPE = 1,
+	RESP_HEADERS = 2,
+	RESP_CONTENT = 3
+} http_response_type;
+
+/* Components (and postitions) of the http_header tuple type */
+enum {
+	HEADER_FIELD = 0,
+	HEADER_VALUE = 1
+} http_header_type;
+
 
 
 /* Function signatures */
@@ -203,6 +222,126 @@ request_type(const char *method)
 		return HTTP_GET;
 }
 
+static Datum
+header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
+{
+	HeapTuple header_tuple;
+	int ncolumns;
+    Datum *header_values;
+    bool *header_nulls;
+	
+	/* Prepare our return object */
+	ncolumns = header_tuple_desc->natts;
+	header_values = palloc0(sizeof(Datum)*ncolumns);
+	header_nulls = palloc0(sizeof(bool)*ncolumns);
+	
+	header_values[HEADER_FIELD] = CStringGetTextDatum(field);
+	header_nulls[HEADER_FIELD] = false;
+	header_values[HEADER_VALUE] = CStringGetTextDatum(value);
+	header_nulls[HEADER_VALUE] = false;
+
+	/* Build up a tuple from values/nulls lists */
+	header_tuple = heap_form_tuple(header_tuple_desc, header_values, header_nulls);
+	return HeapTupleGetDatum(header_tuple);		
+}
+
+static Oid
+lookup_type_oid(const char *typname)
+{
+    Oid namesp = LookupExplicitNamespace("public", false);
+    Oid typoid = GetSysCacheOid2(TYPENAMENSP, CStringGetDatum(typname), ObjectIdGetDatum(namesp));
+	if (OidIsValid(typoid) && get_typisdefined(typoid))
+		return typoid;
+	else
+		return InvalidOid;	
+}
+
+static void
+string_info_remove_cr(StringInfo si)
+{
+	int i = 0, j = 0;
+	while ( si->data[i] )
+	{
+		if ( si->data[i] != '\r' )
+			si->data[j++] = si->data[i++];
+		else
+			i++;
+	}
+	si->data[j] = '\0';
+	si->len -= i-j;
+	return;
+}
+
+static ArrayType *
+header_string_to_array(StringInfo si)
+{
+	/* Array building */
+	int arr_nelems = 0;
+	int arr_elems_size = 8;
+	Datum *arr_elems = palloc0(arr_elems_size*sizeof(Datum));
+	Oid elem_type;
+	int16 elem_len;
+	bool elem_byval;
+	char elem_align;
+	
+	/* Header handling */
+	TupleDesc header_tuple_desc;
+	
+	/* Regex support */
+	const char *regex_pattern = "^([^ \t\r\n\v\f]+): ?([^ \t\r\n\v\f]+.*)$";
+	regex_t regex;
+	regmatch_t pmatch[3];
+	int reti;
+	static int rvsz = 256;
+	char rv1[rvsz];
+	char rv2[rvsz];
+	
+	/* Compile the regular expression */
+	reti = regcomp(&regex, regex_pattern, REG_ICASE | REG_EXTENDED | REG_NEWLINE );
+	if ( reti )
+		elog(ERROR, "Unable to compile regex pattern '%s'", regex_pattern);
+	
+	/* Prepare tuple building metadata */
+	header_tuple_desc = RelationNameGetTupleDesc("http_header");
+	
+	/* Prepare array building metadata */	
+	elem_type = lookup_type_oid("http_header");
+	get_typlenbyvalalign(elem_type, &elem_len, &elem_byval, &elem_align);	
+	
+	/* Loop through string, matching regex pattern */
+	si->cursor = 0;
+	while ( ! regexec(&regex, si->data+si->cursor, 3, pmatch, 0) )
+	{
+		/* Read the regex match results */
+		int eo0 = pmatch[0].rm_eo;
+		int so1 = pmatch[1].rm_so;
+		int eo1 = pmatch[1].rm_eo;
+		int so2 = pmatch[2].rm_so;
+		int eo2 = pmatch[2].rm_eo;
+		
+		/* Copy the matched portions out of the string */
+		memcpy(rv1, si->data+si->cursor+so1, eo1-so1 < rvsz ? eo1-so1 : rvsz);
+		rv1[eo1-so1] = '\0';
+		memcpy(rv2, si->data+si->cursor+so2, eo2-so2 < rvsz ? eo2-so2 : rvsz);
+		rv2[eo2-so2] = '\0';
+	
+		/* Move forward for next match */
+		si->cursor += eo0;
+		
+		/* Increase elements array size if necessary */
+		if ( arr_nelems >= arr_elems_size )
+		{
+			arr_elems_size *= 2;
+			arr_elems = repalloc(arr_elems, arr_elems_size*sizeof(Datum));
+		}
+		arr_elems[arr_nelems] = header_tuple(header_tuple_desc, rv1, rv2);
+		arr_nelems++;		
+	}
+	
+	ReleaseTupleDesc(header_tuple_desc);
+	return construct_array(arr_elems, arr_nelems, elem_type, elem_len, elem_byval, elem_align);	
+}
+
 
 Datum http_request(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(http_request);
@@ -256,8 +395,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 	tuple.t_data = rec;
 
 	/* Prepare for values / nulls */
-    values = (Datum *) palloc(ncolumns * sizeof(Datum));
-    nulls = (bool *) palloc(ncolumns * sizeof(bool));
+    values = (Datum *) palloc0(ncolumns * sizeof(Datum));
+    nulls = (bool *) palloc0(ncolumns * sizeof(bool));
 
     /* Break down the tuple into values/nulls lists */
     heap_deform_tuple(&tuple, tup_desc, values, nulls);
@@ -286,7 +425,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	CURL_SETOPT(http_handle, CURLOPT_FORBID_REUSE, 1);	
 
 	/* Set up the error buffer */
-	http_error_buffer = palloc(CURL_ERROR_SIZE);
+	http_error_buffer = palloc0(CURL_ERROR_SIZE);
 	CURL_SETOPT(http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
 	
 	/* Set up the write-back function */
@@ -314,7 +453,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	CURL_SETOPT(http_handle, CURLOPT_HTTPHEADER, headers);
 	
 	/* Let our charset preference be known */
-	headers = curl_slist_append(headers, "charsets: utf-8");
+	headers = curl_slist_append(headers, "Charsets: utf-8");
 	
 	/* TODO: actually handle optional headers here */
 
@@ -355,7 +494,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 			appendBinaryStringInfo(&si_read, VARDATA(content_text), content_size);
 			CURL_SETOPT(http_handle, CURLOPT_UPLOAD, 1);
 			CURL_SETOPT(http_handle, CURLOPT_READFUNCTION, http_readback);
-			CURL_SETOPT(http_handle, CURLOPT_READDATA, si_read.data);
+			CURL_SETOPT(http_handle, CURLOPT_READDATA, &si_read);
 			CURL_SETOPT(http_handle, CURLOPT_INFILESIZE, content_size);
 		}
 		else 
@@ -394,28 +533,54 @@ Datum http_request(PG_FUNCTION_ARGS)
 		ereport(ERROR, (errmsg("CURL: Error in curl_easy_getinfo")));
 	}
 	
-	/* Make sure the content type is not null */
-	if ( ! content_type )
-		content_type = "";
-	
 	/* Prepare our return object */
 	tup_desc = RelationNameGetTupleDesc("http_response");
 	ncolumns = tup_desc->natts;
-	values = palloc(sizeof(Datum)*ncolumns);
-	nulls = palloc(sizeof(bool)*ncolumns);
+	values = palloc0(sizeof(Datum)*ncolumns);
+	nulls = palloc0(sizeof(bool)*ncolumns);
 
 	/* Status code */
-	values[0] = Int64GetDatum(status);
-	nulls[0] = false;
+	values[RESP_STATUS] = Int64GetDatum(status);
+	nulls[RESP_STATUS] = false;
+
 	/* Content type */
-	values[1] = CStringGetTextDatum(content_type);
-	nulls[1] = false;
+	if ( content_type )
+	{
+		values[RESP_CONTENT_TYPE] = CStringGetTextDatum(content_type);
+		nulls[RESP_CONTENT_TYPE] = false;
+	}	
+	else
+	{
+		values[RESP_CONTENT_TYPE] = (Datum)0;
+		nulls[RESP_CONTENT_TYPE] = true;
+	}
+	
 	/* Headers array */
-	values[2] = (Datum)0;
-	nulls[2] = true;
+	if ( si_headers.len )
+	{
+		/* Strip the carriage-returns, because who cares? */
+		string_info_remove_cr(&si_headers);
+		// elog(NOTICE, "header string: '%s'", si_headers.data);
+		values[RESP_HEADERS] = PointerGetDatum(header_string_to_array(&si_headers));
+		nulls[RESP_HEADERS] = false;
+	}
+	else
+	{
+		values[RESP_HEADERS] = (Datum)0;
+		nulls[RESP_HEADERS] = true;
+	}
+
 	/* Content */
-	values[3] = PointerGetDatum(cstring_to_text_with_len(si_data.data, si_data.len));
-	nulls[3] = false;
+	if ( si_data.len )
+	{
+		values[RESP_CONTENT] = PointerGetDatum(cstring_to_text_with_len(si_data.data, si_data.len));
+		nulls[RESP_CONTENT] = false;
+	}
+	else
+	{
+		values[RESP_CONTENT] = (Datum)0;
+		nulls[RESP_CONTENT] = true;
+	}
 
 	/* Build up a tuple from values/nulls lists */
 	tuple_out = heap_form_tuple(tup_desc, values, nulls);
@@ -468,7 +633,7 @@ Datum urlencode(PG_FUNCTION_ARGS)
 	str_in = (char*)txt + VARHDRSZ;
 	
 	/* Prepare the output string */
-	str_out = palloc(txt_size * 4);
+	str_out = palloc0(txt_size * 4);
 	ptr = str_out;
 	
 	for ( i = 0; i < txt_size; i++ )
