@@ -2,7 +2,7 @@
 MODULE_big = http
 OBJS = http.o
 EXTENSION = http
-DATA = http--1.0.sql
+DATA = http--1.0.sql http--1.1.sql
 REGRESS = http
 EXTRA-CLEAN =
 

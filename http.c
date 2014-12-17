@@ -40,8 +40,11 @@
 #include <postgres.h>
 #include <fmgr.h>
 #include <funcapi.h>
-#include <utils/builtins.h>
+#include <access/htup.h>
+#include <access/htup_details.h>
 #include <lib/stringinfo.h>
+#include <utils/builtins.h>
+#include <utils/typcache.h>
 
 /* CURL */
 #include <curl/curl.h>
@@ -50,15 +53,37 @@
 PG_MODULE_MAGIC;
 
 
-/* Startup */
+/* HTTP request methods we support */
+typedef enum {
+	HTTP_GET,
+	HTTP_POST,
+	HTTP_DELETE,
+	HTTP_PUT
+} http_method;
+
+/* Components (and postitions) of the http_request tuple type */
+enum {
+	REQ_METHOD = 0, 
+	REQ_URI = 1,
+	REQ_HEADERS = 2,
+	REQ_CONTENT_TYPE = 3,
+	REQ_CONTENT = 4
+} http_request_type;
+
+
+/* Function signatures */
 void _PG_init(void);
+void _PG_fini(void);
+static size_t http_writeback(void *contents, size_t size, size_t nmemb, void *userp);
+static size_t http_readback(void *buffer, size_t size, size_t nitems, void *instream);
+
+/* Startup */
 void _PG_init(void)
 {
 	curl_global_init(CURL_GLOBAL_ALL);
 }
 
 /* Tear-down */
-void _PG_fini(void);
 void _PG_fini(void)
 {
 	curl_global_cleanup();
@@ -79,10 +104,26 @@ http_writeback(void *contents, size_t size, size_t nmemb, void *userp)
 }
 
 /**
+* This function is passed into CURL as the CURLOPT_READFUNCTION, 
+* this allows the PUT operation to read the data it needs.
+*/
+static size_t
+http_readback(void *buffer, size_t size, size_t nitems, void *instream)
+{
+	size_t realsize = size * nitems;
+	StringInfo si = (StringInfo)instream;
+	memcpy(buffer, si->data + si->cursor, realsize);
+	si->cursor += realsize;
+	return realsize;
+}
+
+
+/**
 * Uses regex to find the value of a header. Very limited pattern right now, only
 * searches for an alphanumeric string after the header name. Should be extended to
 * search out to the end of the header line (\n) and optionally also to remove " marks.
 */
+#if 0
 static char*
 header_value(const char* header_str, const char* header_name)
 {
@@ -133,7 +174,7 @@ header_value(const char* header_str, const char* header_name)
 	return_str[0] = '\0';
 	return return_str;
 }
-
+#endif
 	
 /* Utility macro to try a setopt and catch an error */
 #define CURL_SETOPT(handle, opt, value) do { \
@@ -146,71 +187,103 @@ header_value(const char* header_str, const char* header_name)
 	} while (0);
 
 
-static void freeStringInfo(StringInfo si)
+
+static http_method 
+request_type(const char *method)
 {
-	if ( si ) 
-	{
-		if ( si->data ) 
-			pfree(si->data);
-		pfree(si);
-	}		
+	if ( strcasecmp(method, "GET") == 0 )
+		return HTTP_GET;
+	else if ( strcasecmp(method, "POST") == 0 )
+		return HTTP_POST;
+	else if ( strcasecmp(method, "PUT") == 0 )
+		return HTTP_PUT;
+	else if ( strcasecmp(method, "DELETE") == 0 )
+		return HTTP_DELETE;
+	else
+		return HTTP_GET;
 }
 
-/**
-* Our only function, currently only does a get. Could take in parameters
-* if we wanted to get fancy and do HTTP URL encoding. Might be better to
-* take in a JSON or HSTORE object in PgSQL 9.2+
-*/
-Datum http_get(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(http_get);
-Datum http_get(PG_FUNCTION_ARGS)
+
+Datum http_request(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(http_request);
+Datum http_request(PG_FUNCTION_ARGS)
 {
 	/* Input */
-	text *url = NULL;
-	text *params = NULL;
+	HeapTupleHeader rec;
+	HeapTupleData tuple;
+    Oid tup_type;
+    int32 tup_typmod;
+	TupleDesc tup_desc;
+	int ncolumns;
+    Datum *values;
+    bool *nulls;
+	
+	const char *uri;
+	http_method method;
 	
 	/* Processing */
 	CURL *http_handle = NULL;
 	CURLcode err; 
 	char *http_error_buffer = NULL;
-	struct curl_slist *headers = NULL;	
-	StringInfo si_data = makeStringInfo();
-	StringInfo si_headers = makeStringInfo();
+	struct curl_slist *headers = NULL;
+	StringInfoData si_data;
+	StringInfoData si_headers;
+	StringInfoData si_read;
 	
 	int http_return;
 	long status;
 	char *content_type = NULL;
-	char status_str[128];
 
 	/* Output */
-	char **values;
-	AttInMetadata *attinmeta;
-	HeapTuple tuple;
-	Datum result;
+	HeapTuple tuple_out;
 
-	/* We cannot get a null URL */
+	/* We cannot handle a null request */
 	if ( ! PG_ARGISNULL(0) )
-		url = PG_GETARG_TEXT_P(0);
+		rec = PG_GETARG_HEAPTUPLEHEADER(0);
 	else
-		ereport(ERROR, (errmsg("A URL must be provided")));
+		elog(ERROR, "An http_request must be provided");
+	
+    /* Extract type info from the tuple itself */
+    tup_type = HeapTupleHeaderGetTypeId(rec);
+    tup_typmod = HeapTupleHeaderGetTypMod(rec);
+    tup_desc = lookup_rowtype_tupdesc(tup_type, tup_typmod);
+    ncolumns = tup_desc->natts;
+	
+	/* Build a temporary HeapTuple control structure */
+	tuple.t_len = HeapTupleHeaderGetDatumLength(rec);
+	ItemPointerSetInvalid(&(tuple.t_self));
+	tuple.t_tableOid = InvalidOid;
+	tuple.t_data = rec;
 
-	/* Load the parameters, if there are any */
-	if ( ! PG_ARGISNULL(1) )
-		params = PG_GETARG_TEXT_P(1);
+	/* Prepare for values / nulls */
+    values = (Datum *) palloc(ncolumns * sizeof(Datum));
+    nulls = (bool *) palloc(ncolumns * sizeof(bool));
+
+    /* Break down the tuple into a values list */
+    heap_deform_tuple(&tuple, tup_desc, values, nulls);
+	
+	/* Read the URI */
+	if ( nulls[REQ_URI] )
+		elog(ERROR, "http_request.uri is NULL");
+	uri = text_to_cstring(DatumGetTextP(values[REQ_URI]));
+
+	/* Read the method */
+	if ( nulls[REQ_METHOD] )
+		elog(ERROR, "http_request.method is NULL");
+	method = request_type(text_to_cstring(DatumGetTextP(values[REQ_METHOD])));
 
 	/* Initialize CURL */
 	if ( ! (http_handle = curl_easy_init()) )
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
 
-	/* Add a close option to the headers to avoid open network sockets */
-	headers = curl_slist_append(headers, "Connection: close");
-	CURL_SETOPT(http_handle, CURLOPT_HTTPHEADER, headers);
+	/* Set the target URL */
+	CURL_SETOPT(http_handle, CURLOPT_URL, uri);
 
 	/* Set the user agent */
 	CURL_SETOPT(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
 	
-	/* Set the target URL */
-	CURL_SETOPT(http_handle, CURLOPT_URL, text_to_cstring(url));
+	/* Keep sockets from being held open */
+	CURL_SETOPT(http_handle, CURLOPT_FORBID_REUSE, 1);	
 
 	/* Set up the error buffer */
 	http_error_buffer = palloc(CURL_ERROR_SIZE);
@@ -220,23 +293,89 @@ Datum http_get(PG_FUNCTION_ARGS)
 	CURL_SETOPT(http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
 	
 	/* Set up the write-back buffer */
-	CURL_SETOPT(http_handle, CURLOPT_WRITEDATA, (void*)si_data);
-	CURL_SETOPT(http_handle, CURLOPT_WRITEHEADER, (void*)si_headers);
+	initStringInfo(&si_data);
+	initStringInfo(&si_headers);		
+	CURL_SETOPT(http_handle, CURLOPT_WRITEDATA, (void*)(&si_data));
+	CURL_SETOPT(http_handle, CURLOPT_WRITEHEADER, (void*)(&si_headers));
 	
 	/* Set up the HTTP timeout */
 	CURL_SETOPT(http_handle, CURLOPT_TIMEOUT, 5);
 	CURL_SETOPT(http_handle, CURLOPT_CONNECTTIMEOUT, 1);
 
 	/* Set up the HTTP content encoding to gzip */
-	/* curl_easy_setopt(http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING); */
+	/*curl_easy_setopt(http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING);*/
 
 	/* Follow redirects, as many as 5 */
 	CURL_SETOPT(http_handle, CURLOPT_FOLLOWLOCATION, 1);
-	CURL_SETOPT(http_handle, CURLOPT_MAXREDIRS, 5);
+	CURL_SETOPT(http_handle, CURLOPT_MAXREDIRS, 5);	
 	
+	/* Add a close option to the headers to avoid open network sockets */
+	headers = curl_slist_append(headers, "Connection: close");
+	CURL_SETOPT(http_handle, CURLOPT_HTTPHEADER, headers);
+	
+	/* Let our charset preference be known */
+	headers = curl_slist_append(headers, "charsets: utf-8");
+	
+	/* TODO: actually handle optional headers here */
+
+	/* Specific handling for methods that send a content payload */
+	if ( method == HTTP_POST || method == HTTP_PUT )
+	{
+		text *content_text;
+		size_t content_size;
+		char *content_type;
+		char buffer[1024];
+		size_t buffersz = sizeof(buffer);
+
+		/* Read the content type */
+		if ( nulls[REQ_CONTENT_TYPE] )
+			elog(ERROR, "http_request.content_type is NULL");
+		content_type = text_to_cstring(DatumGetTextP(values[REQ_CONTENT_TYPE]));
+
+		/* Add content type to the headers */
+		snprintf(buffer, buffersz, "Content-Type: %s", content_type);
+		headers = curl_slist_append(headers, buffer);
+		pfree(content_type);
+		
+		/* Read the content */
+		if ( nulls[REQ_CONTENT] )
+			elog(ERROR, "http_request.content is NULL");
+		content_text = DatumGetTextP(values[REQ_CONTENT]);
+		content_size = VARSIZE(content_text) - VARHDRSZ;
+		
+		if ( method == HTTP_POST )
+		{
+			/* Add the content to the payload */
+			CURL_SETOPT(http_handle, CURLOPT_POST, 1);
+			CURL_SETOPT(http_handle, CURLOPT_POSTFIELDS, text_to_cstring(content_text));
+		}
+		else if ( method == HTTP_PUT )
+		{
+			initStringInfo(&si_read);
+			appendBinaryStringInfo(&si_read, VARDATA(content_text), content_size);
+			CURL_SETOPT(http_handle, CURLOPT_UPLOAD, 1);
+			CURL_SETOPT(http_handle, CURLOPT_READFUNCTION, http_readback);
+			CURL_SETOPT(http_handle, CURLOPT_READDATA, si_read.data);
+			CURL_SETOPT(http_handle, CURLOPT_INFILESIZE, content_size);
+		}
+		else 
+		{
+			/* Never get here */
+		}
+	}
+	else if ( method == HTTP_DELETE )
+	{
+		elog(ERROR, "http_request.method == DELETE not yet implemented");
+	}
+
 	/* Run it! */ 
 	http_return = curl_easy_perform(http_handle);
-	elog(DEBUG2, "pgsql-http: queried %s", text_to_cstring(url));
+	elog(DEBUG2, "pgsql-http: queried %s", uri);
+
+	/* Clean up some input things we don't need anymore */
+	ReleaseTupleDesc(tup_desc);
+	pfree(values);
+	pfree(nulls);
 
 	/* Write out an error on failure */
 	if ( http_return )
@@ -255,189 +394,44 @@ Datum http_get(PG_FUNCTION_ARGS)
 		ereport(ERROR, (errmsg("CURL: Error in curl_easy_getinfo")));
 	}
 	
-	/* Print the status code out */
-	snprintf(status_str, sizeof(status_str), "%ld", status);
-	
 	/* Make sure the content type is not null */
 	if ( ! content_type )
 		content_type = "";
 	
 	/* Prepare our return object */
-	values = palloc(sizeof(char*) * 4);
-	values[0] = status_str;
-	values[1] = content_type;
-	values[2] = si_headers->data;
-	values[3] = si_data->data;
-	
+	tup_desc = RelationNameGetTupleDesc("http_response");
+	ncolumns = tup_desc->natts;
+	values = palloc(sizeof(Datum)*ncolumns);
+	nulls = palloc(sizeof(bool)*ncolumns);
 
-	/* Flip cstring values into a PgSQL tuple */
-	attinmeta = TupleDescGetAttInMetadata(RelationNameGetTupleDesc("http_response"));
-	tuple = BuildTupleFromCStrings(attinmeta, values);
-	result = HeapTupleGetDatum(tuple);
-	
+	/* Status code */
+	values[0] = Int64GetDatum(status);
+	nulls[0] = false;
+	/* Content type */
+	values[1] = CStringGetTextDatum(content_type);
+	nulls[1] = false;
+	/* Headers array */
+	values[2] = (Datum)0;
+	nulls[2] = true;
+	/* Content */
+	values[3] = PointerGetDatum(cstring_to_text_with_len(si_data.data, si_data.len));
+	nulls[3] = false;
+
+	tuple_out = heap_form_tuple(tup_desc, values, nulls);
+		
 	/* Clean up */
+	ReleaseTupleDesc(tup_desc);
 	curl_easy_cleanup(http_handle);
 	curl_slist_free_all(headers);
 	pfree(http_error_buffer);
-	freeStringInfo(si_headers);
-	freeStringInfo(si_data);
+	pfree(si_headers.data);
+	pfree(si_data.data);
 
 	/* Return */
-	PG_RETURN_DATUM(result);
+	PG_RETURN_DATUM(HeapTupleGetDatum(tuple_out));	
 }
 
-Datum http_post(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(http_post);
-Datum http_post(PG_FUNCTION_ARGS)
-{
-	/* Input */
-	text *url = NULL;
-	text *data = NULL;
-	text *params = NULL;
-	text *text_contenttype = NULL;
-	
-	/* Processing */
-	CURL *http_handle = NULL; 
-	CURLcode err; 
-	char *http_error_buffer = NULL;	
-	StringInfo si_data = makeStringInfo();
-	StringInfo si_headers = makeStringInfo();
-	
-	int http_return;
-	long status;
-	char *content_type = NULL;
-	char status_str[128];
-	char buffer[1024];
-	size_t buffersz = sizeof(buffer);
-	char *str;
-	struct curl_slist *headers = NULL;
 
-	/* Output */
-	char **values;
-	AttInMetadata *attinmeta;
-	HeapTuple tuple;
-	Datum result;
-	/* We cannot get a null URL */
-	if ( ! PG_ARGISNULL(0) )
-		url = PG_GETARG_TEXT_P(0);
-	else
-		ereport(ERROR, (errmsg("A URL must be provided")));
-
-	if ( ! PG_ARGISNULL(2) )
-		data = PG_GETARG_TEXT_P(2);
-	else
-		ereport(ERROR, (errmsg("A DATA must be provided")));
-
-	if ( ! PG_ARGISNULL(3) )
-		text_contenttype = PG_GETARG_TEXT_P(3);
-	else
-		ereport(ERROR, (errmsg("content type must be provided")));
-
-	/* Initialize CURL */
-	if ( ! (http_handle = curl_easy_init()) )
-		ereport(ERROR, (errmsg("Unable to initialize CURL")));
-
-	/* Load the parameters, if there are any */
-	if ( ! PG_ARGISNULL(1) )
-		params = PG_GETARG_TEXT_P(1);
-
-	/* Post requires content type and accept headers */
-	str = text_to_cstring(text_contenttype);
-	snprintf(buffer, buffersz, "Content-Type: %s", str);
-	headers = curl_slist_append(headers, buffer);
-	snprintf(buffer, buffersz, "Accept: %s", str);
-	headers = curl_slist_append(headers, buffer);
-	headers = curl_slist_append(headers, "Connection: close");
-	headers = curl_slist_append(headers, "charsets: utf-8");
-	pfree(str);
-	
-	CURL_SETOPT(http_handle, CURLOPT_HTTPHEADER, headers); 
-
-	/* Set the user agent */
-	CURL_SETOPT(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
-
-	/* Keep sockets from being held open */
-	CURL_SETOPT(http_handle, CURLOPT_FORBID_REUSE, 1);
-	
-	/* Set the target URL */
-	CURL_SETOPT(http_handle, CURLOPT_URL, text_to_cstring(url));
-
-	/* Set up the error buffer */
-	http_error_buffer = palloc(CURL_ERROR_SIZE);
-	CURL_SETOPT(http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
-	
-	
-	/* Set up the write-back function */
-	CURL_SETOPT(http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
-	
-	/* Set up the write-back buffer */
-	CURL_SETOPT(http_handle, CURLOPT_WRITEDATA, (void*)si_data);
-	CURL_SETOPT(http_handle, CURLOPT_WRITEHEADER, (void*)si_headers);
-	
-	/* Set up the HTTP timeout */
-	CURL_SETOPT(http_handle, CURLOPT_TIMEOUT, 5);
-	CURL_SETOPT(http_handle, CURLOPT_CONNECTTIMEOUT, 1);
-
-	/* Set up the HTTP content encoding to gzip */
-	/*curl_easy_setopt(http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING);*/
-
-	/* Follow redirects, as many as 5 */
-	CURL_SETOPT(http_handle, CURLOPT_FOLLOWLOCATION, 1);
-	CURL_SETOPT(http_handle, CURLOPT_MAXREDIRS, 5);
-
-	CURL_SETOPT(http_handle, CURLOPT_POST, 1);
-	CURL_SETOPT(http_handle, CURLOPT_POSTFIELDS, text_to_cstring(data));
-	
-	/* Run it! */ 
-	http_return = curl_easy_perform(http_handle);
-	elog(DEBUG2, "pgsql-http: queried %s", text_to_cstring(url));
-
-	/* Write out an error on failure */
-	if ( http_return )
-	{
-		curl_easy_cleanup(http_handle);
-		curl_slist_free_all(headers);
-		ereport(ERROR, (errmsg("%s", http_error_buffer)));
-	}
-
-	/* Read the metadata from the handle directly */
-	if ( (CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_RESPONSE_CODE, &status)) ||
-	     (CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_CONTENT_TYPE, &content_type)) )
-	{
-		curl_easy_cleanup(http_handle);
-		curl_slist_free_all(headers);
-		ereport(ERROR, (errmsg("CURL: Error in curl_easy_getinfo")));
-	}
-	
-	/* Print the status code out */
-	snprintf(status_str, sizeof(status_str), "%ld", status);
-	
-	/* Make sure the content type is not null */
-	if ( ! content_type )
-		content_type = "";
-	
-	/* Prepare our return object */
-	values = palloc(sizeof(char*) * 4);
-	values[0] = status_str;
-	values[1] = content_type;
-	values[2] = si_headers->data;
-	values[3] = si_data->data;
-
-	/* Flip cstring values into a PgSQL tuple */
-	attinmeta = TupleDescGetAttInMetadata(RelationNameGetTupleDesc("http_response"));
-	tuple = BuildTupleFromCStrings(attinmeta, values);
-	result = HeapTupleGetDatum(tuple);
-	
-	/* Clean up */
-	curl_easy_cleanup(http_handle);
-	curl_slist_free_all(headers);
-	pfree(http_error_buffer);	
-	freeStringInfo(si_headers);
-	freeStringInfo(si_data);
-
-	/* Return */
-	PG_RETURN_DATUM(result);
-}
 
 
 /* URL Encode Escape Chars */
