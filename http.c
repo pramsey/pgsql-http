@@ -4,7 +4,7 @@
  * Purpose:  Main file.
  *
  ***********************************************************************
- * Copyright 2012 Paul Ramsey <pramsey@opengeo.org>
+ * Copyright 2014 Paul Ramsey <pramsey@cleverelephant.ca>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -28,7 +28,7 @@
  ***********************************************************************/
 
 /* Constants */
-#define HTTP_VERSION "1.0"
+#define HTTP_VERSION "1.1"
 #define HTTP_ENCODING "gzip"
 
 /* System */
@@ -265,12 +265,12 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Read the URI */
 	if ( nulls[REQ_URI] )
 		elog(ERROR, "http_request.uri is NULL");
-	uri = text_to_cstring(DatumGetTextP(values[REQ_URI]));
+	uri = TextDatumGetCString(values[REQ_URI]);
 
 	/* Read the method */
 	if ( nulls[REQ_METHOD] )
 		elog(ERROR, "http_request.method is NULL");
-	method = request_type(text_to_cstring(DatumGetTextP(values[REQ_METHOD])));
+	method = request_type(TextDatumGetCString(values[REQ_METHOD]));
 
 	/* Initialize CURL */
 	if ( ! (http_handle = curl_easy_init()) )
