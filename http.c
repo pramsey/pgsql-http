@@ -463,8 +463,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 		}
 	}
 	else if ( method == HTTP_DELETE )
-	{
-		elog(ERROR, "http_request.method == DELETE not yet implemented");
+	{		
+		CURL_SETOPT(http_handle, CURLOPT_CUSTOMREQUEST, "DELETE");
 	}
 
 	/* Run it! */ 

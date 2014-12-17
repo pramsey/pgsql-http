@@ -9,68 +9,99 @@ This extension is for that.
 
 ## Examples
 
-	SELECT http_get('http://localhost');
+    > SELECT content FROM http_get('http://localhost');
 
-	                                    http_get                                   
-	  ------------------------------------------------------------------------------
-	   (200,text/html,"HTTP/1.1 200 OK\r                                           +
-	   Date: Wed, 18 Apr 2012 22:18:03 GMT\r                                       +
-	   Server: Apache/2.2.21 (Unix) mod_ssl/2.2.21 OpenSSL/0.9.8r DAV/2 PHP/5.3.8\r+
-	   Content-Location: index.html.en\r                                           +
-	   Vary: negotiate\r                                                           +
-	   TCN: choice\r                                                               +
-	   Last-Modified: Thu, 09 Dec 2010 04:40:42 GMT\r                              +
-	   ETag: ""140c8-2c-496f2d71b8680""\r                                          +
-	   Accept-Ranges: bytes\r                                                      +
-	   Content-Length: 44\r                                                        +
-	   Content-Type: text/html\r                                                   +
-	   Content-Language: en\r                                                      +
-	   \r                                                                          +
-	   ","<html><body><h1>It works!</h1></body></html>")
-	  (1 row)
+                       content                    
+    ----------------------------------------------
+     <html><body><h1>It works!</h1></body></html>
+    (1 row)
 
 
-	SELECT status, content_type, content FROM http_get('http://localhost');
+    > SELECT status, content_type, content FROM http_get('http://localhost');
 
-	   status | content_type |                   content                    
-	  --------+--------------+----------------------------------------------
-	      200 | text/html    | <html><body><h1>It works!</h1></body></html>
-	  (1 row)
+     status | content_type |                   content                    
+    --------+--------------+----------------------------------------------
+        200 | text/html    | <html><body><h1>It works!</h1></body></html>
+    (1 row)
 
+  
+    > SELECT (unnest(headers)).* FROM http_get('http://localhost');
 
-	SELECT headers FROM http_get('http://localhost');
+          field       |                                value                                 
+    ------------------+----------------------------------------------------------------------
+     Date             | Wed, 17 Dec 2014 21:47:27 GMT
+     Server           | Apache/2.2.26 (Unix) DAV/2 PHP/5.4.30 mod_ssl/2.2.26 OpenSSL/0.9.8za
+     Content-Location | index.html.en
+     Vary             | negotiate
+     TCN              | choice
+     Last-Modified    | Sat, 30 Nov 2013 03:48:45 GMT
+     ETag             | "a2961-2c-4ec5cd2d28140"
+     Accept-Ranges    | bytes
+     Content-Length   | 44
+     Connection       | close
+     Content-Type     | text/html
+     Content-Language | en
 
-	                                     headers                                    
-	  ------------------------------------------------------------------------------
-	   HTTP/1.1 200 OK\r                                                           +
-	   Date: Wed, 18 Apr 2012 22:29:29 GMT\r                                       +
-	   Server: Apache/2.2.21 (Unix) mod_ssl/2.2.21 OpenSSL/0.9.8r DAV/2 PHP/5.3.8\r+
-	   Content-Location: index.html.en\r                                           +
-	   Vary: negotiate\r                                                           +
-	   TCN: choice\r                                                               +
-	   Last-Modified: Thu, 09 Dec 2010 04:40:42 GMT\r                              +
-	   ETag: "140c8-2c-496f2d71b8680"\r                                            +
-	   Accept-Ranges: bytes\r                                                      +
-	   Content-Length: 44\r                                                        +
-	   Content-Type: text/html\r                                                   +
-	   Content-Language: en\r                                                      +
-	   \r                                                                          +
-	  (1 row)
 	  
-	  SELECT headers FROM http_post('http://localhost:8080/elastic/item/', null, '{
-			    "itemid" : "1",
-			    "insert_date" : "2014-09-17T00:00:00",
-			    "title" : "New item 1"}', 'application/json');
-		                     headers
-		------------------------------------------------
-		 HTTP/1.1 200 OK\r                             +
-		 Server: Apache-Coyote/1.1\r                   +
-		 Content-Type: application/json;charset=UTF-8\r+
-		 Transfer-Encoding: chunked\r                  +
-		 Date: Thu, 18 Sep 2014 15:03:21 GMT\r         +
-		 \r                                            +
-		 
-		(1 row)
+	  > SELECT status,content FROM http_put('http://localhost/resource', 'some text', 'text/plain');
+    
+     status |                                content                                
+    --------+-----------------------------------------------------------------------
+        405 | <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">                   +
+            | <html><head>                                                         +
+            | <title>405 Method Not Allowed</title>                                +
+            | </head><body>                                                        +
+            | <h1>Method Not Allowed</h1>                                          +
+            | <p>The requested method PUT is not allowed for the URL /resource.</p>+
+            | </body></html>                                                       +
+            | 
+
+    > SELECT status, content FROM http_delete('http://localhost');
+
+     status |                                    content                                    
+    --------+-------------------------------------------------------------------------------
+        405 | <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">                           +
+            | <html><head>                                                                 +
+            | <title>405 Method Not Allowed</title>                                        +
+            | </head><body>                                                                +
+            | <h1>Method Not Allowed</h1>                                                  +
+            | <p>The requested method DELETE is not allowed for the URL /index.html.en.</p>+
+            | </body></html>                                                               +
+            | 
+
+
+## Concepts
+
+Every HTTP call is a made up of an `http_request` and an `http_response`.
+
+         Composite type "public.http_request"
+        Column    |       Type        | Modifiers 
+    --------------+-------------------+-----------
+     method       | http_method       | 
+     uri          | character varying | 
+     headers      | http_header[]     | 
+     content_type | character varying | 
+     content      | character varying | 
+
+        Composite type "public.http_response"
+        Column    |       Type        | Modifiers 
+    --------------+-------------------+-----------
+     status       | integer           | 
+     content_type | character varying | 
+     headers      | http_header[]     | 
+     content      | character varying | 
+
+The utility functions, `http_get()`, `http_post()`, `http_put()`, and `http_delete()` are just wrappers around a master function, `http(http_request)` that returns `http_response`.
+
+The `headers` field for requests and response is a PostgreSQL array of type `http_header` which is just a simple tuple.
+
+      Composite type "public.http_header"
+     Column |       Type        | Modifiers 
+    --------+-------------------+-----------
+     field  | character varying | 
+     value  | character varying | 
+
+As seen in the examples, you can easily unspool the array of `http_header` tuples into a result set using the PostgreSQL `unnest()` function on the array. From there you can easily select the particular header you are interested in.
 
 ## Installation
 
@@ -88,19 +119,9 @@ Sorry, no story here yet.
 - "What if the web page returns junk?" Your SQL call will have to test for junk before doing anything with the payload.
 - "What if the web page never returns?" I've found this code can really hang a back-end hard. The curl timeout settings need more testing and tweaking for faster failure and timeout.
 
-## Operation
-
-The extension is just a wrapping around CURL, which provides us the headers and the content body of the result. We get the status code and the content type by running a regex on the headers. All the information is that stuffed into a compound type for return, with slots for:
-
-- **status**, the HTTP status code
-- **content_type**, the mime-type of the response
-- **headers**, the full text of the response headers
-- **content**, the full text of the content
 
 ## To Do
 
 - The new http://www.postgresql.org/docs/9.3/static/bgworker.html background worker support could be used to set up an HTTP request queue, so that pgsql-http can register a request and callback and then return immediately.
-- There is currently only one function, and no support for parameters or anything like that. Support for other HTTP verbs is an obvious enhancement. 
-- Some kind of support for parameters and encoding that doesn't involve hand-balling text is another (but without an associative array type to hold the parameters, seems messy (hello, PgSQL 9.2)).
 - Inevitably some web server will return gzip content (Content-Encoding) without being asked for it. Handling that gracefully would be good.
 
