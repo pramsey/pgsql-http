@@ -259,7 +259,7 @@ Datum http_request(PG_FUNCTION_ARGS)
     values = (Datum *) palloc(ncolumns * sizeof(Datum));
     nulls = (bool *) palloc(ncolumns * sizeof(bool));
 
-    /* Break down the tuple into a values list */
+    /* Break down the tuple into values/nulls lists */
     heap_deform_tuple(&tuple, tup_desc, values, nulls);
 	
 	/* Read the URI */
@@ -417,6 +417,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	values[3] = PointerGetDatum(cstring_to_text_with_len(si_data.data, si_data.len));
 	nulls[3] = false;
 
+	/* Build up a tuple from values/nulls lists */
 	tuple_out = heap_form_tuple(tup_desc, values, nulls);
 		
 	/* Clean up */
