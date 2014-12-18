@@ -138,6 +138,8 @@ As seen in the examples, you can easily unspool the array of `http_header` tuple
 
 If you have PostgreSQL devel packages and CURL devel packages installed, you should have `pg_config` and `curl-config` on your path, so you should be able to just run `make`, then `make install`, then in your database `CREATE EXTENSION http`.
 
+If you already installed version 1.0 and you just want to upgrade, then `ALTER EXTENSION http UPDATE TO '1.1'`.
+
 ### Windows
 
 Sorry, no story here yet.
