@@ -69,7 +69,7 @@ This extension is for that.
             | </body></html>                                                               +
             | 
 
-To access binary content, you must coerce the content from the defeault `varchar` representation to a `bytea` representation using the `textsend` function. Using the default `text::bytea` cast will not work, as the cast will stop the first it hits a zero-valued byte (common in binary data).
+To access binary content, you must coerce the content from the defeault `varchar` representation to a `bytea` representation using the `textsend` function. Using the default `varchar::bytea` cast will not work, as the cast will stop the first it hits a zero-valued byte (common in binary data).
 
     WITH 
       http AS ( 
