@@ -174,8 +174,8 @@ header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
 {
 	HeapTuple header_tuple;
 	int ncolumns;
-    Datum *header_values;
-    bool *header_nulls;
+	Datum *header_values;
+	bool *header_nulls;
 	
 	/* Prepare our return object */
 	ncolumns = header_tuple_desc->natts;
@@ -198,8 +198,8 @@ header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
 static Oid
 lookup_type_oid(const char *typname)
 {
-    Oid namesp = LookupExplicitNamespace("public", false);
-    Oid typoid = GetSysCacheOid2(TYPENAMENSP, CStringGetDatum(typname), ObjectIdGetDatum(namesp));
+	Oid namesp = LookupExplicitNamespace("public", false);
+	Oid typoid = GetSysCacheOid2(TYPENAMENSP, CStringGetDatum(typname), ObjectIdGetDatum(namesp));
 	if (OidIsValid(typoid) && get_typisdefined(typoid))
 		return typoid;
 	else
@@ -310,12 +310,12 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Input */
 	HeapTupleHeader rec;
 	HeapTupleData tuple;
-    Oid tup_type;
-    int32 tup_typmod;
+	Oid tup_type;
+	int32 tup_typmod;
 	TupleDesc tup_desc;
 	int ncolumns;
-    Datum *values;
-    bool *nulls;
+	Datum *values;
+	bool *nulls;
 	
 	const char *uri;
 	http_method method;
@@ -342,11 +342,11 @@ Datum http_request(PG_FUNCTION_ARGS)
 	else
 		elog(ERROR, "An http_request must be provided");
 	
-    /* Extract type info from the tuple itself */
-    tup_type = HeapTupleHeaderGetTypeId(rec);
-    tup_typmod = HeapTupleHeaderGetTypMod(rec);
-    tup_desc = lookup_rowtype_tupdesc(tup_type, tup_typmod);
-    ncolumns = tup_desc->natts;
+	/* Extract type info from the tuple itself */
+	tup_type = HeapTupleHeaderGetTypeId(rec);
+	tup_typmod = HeapTupleHeaderGetTypMod(rec);
+	tup_desc = lookup_rowtype_tupdesc(tup_type, tup_typmod);
+	ncolumns = tup_desc->natts;
 	
 	/* Build a temporary HeapTuple control structure */
 	tuple.t_len = HeapTupleHeaderGetDatumLength(rec);
@@ -355,11 +355,11 @@ Datum http_request(PG_FUNCTION_ARGS)
 	tuple.t_data = rec;
 
 	/* Prepare for values / nulls */
-    values = (Datum *) palloc0(ncolumns * sizeof(Datum));
-    nulls = (bool *) palloc0(ncolumns * sizeof(bool));
+	values = (Datum *) palloc0(ncolumns * sizeof(Datum));
+	nulls = (bool *) palloc0(ncolumns * sizeof(bool));
 
-    /* Break down the tuple into values/nulls lists */
-    heap_deform_tuple(&tuple, tup_desc, values, nulls);
+	/* Break down the tuple into values/nulls lists */
+	heap_deform_tuple(&tuple, tup_desc, values, nulls);
 	
 	/* Read the URI */
 	if ( nulls[REQ_URI] )
