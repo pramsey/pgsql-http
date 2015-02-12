@@ -43,7 +43,7 @@ This extension is for that.
      Content-Language | en
 
 	  
-	  > SELECT status,content FROM http_put('http://localhost/resource', 'some text', 'text/plain');
+    > SELECT status,content FROM http_put('http://localhost/resource', 'some text', 'text/plain');
     
      status |                                content                                
     --------+-----------------------------------------------------------------------
@@ -69,7 +69,11 @@ This extension is for that.
             | </body></html>                                                               +
             | 
 
-    > SELET status, content FROM http_post('http://localhost/myform','myvar=myval&foo=bar','application/x-www-form-urlencoded);
+To POST to a URL using a data payload instead of parameters embedded in the URL, use the ``application/x-www-form-urlencoded`` content type.
+
+    > SELECT status, content FROM http_post('http://localhost/myform',
+                                            'myvar=myval&foo=bar',
+                                            'application/x-www-form-urlencoded);
 
 To access binary content, you must coerce the content from the defeault `varchar` representation to a `bytea` representation using the `textsend` function. Using the default `varchar::bytea` cast will not work, as the cast will stop the first it hits a zero-valued byte (common in binary data).
 
