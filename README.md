@@ -92,7 +92,7 @@ Remember to [URL encode](http://en.wikipedia.org/wiki/Percent-encoding) content 
                      'myvar=' || urlencode('my special string & things?'),
                      'application/x-www-form-urlencoded);
 
-To access binary content, you must coerce the content from the defeault `varchar` representation to a `bytea` representation using the `textsend` function. Using the default `varchar::bytea` cast will not work, as the cast will stop the first it hits a zero-valued byte (common in binary data).
+To access binary content, you must coerce the content from the default `varchar` representation to a `bytea` representation using the `textsend` function. Using the default `varchar::bytea` cast will not work, as the cast will stop the first it hits a zero-valued byte (common in binary data).
 
     WITH 
       http AS ( 
