@@ -9,6 +9,14 @@ This extension is for that.
 
 ## Examples
 
+    > SELECT urlencode('my special string''s & things?');
+
+                  urlencode              
+    -------------------------------------
+     my+special+string%27s+%26+things%3F
+    (1 row)
+
+
     > SELECT content FROM http_get('http://localhost');
 
                        content                    
@@ -43,7 +51,7 @@ This extension is for that.
      Content-Language | en
 
 	  
-	  > SELECT status,content FROM http_put('http://localhost/resource', 'some text', 'text/plain');
+    > SELECT status,content FROM http_put('http://localhost/resource', 'some text', 'text/plain');
     
      status |                                content                                
     --------+-----------------------------------------------------------------------
@@ -69,9 +77,22 @@ This extension is for that.
             | </body></html>                                                               +
             | 
 
-    > SELET status, content FROM http_post('http://localhost/myform','myvar=myval&foo=bar','application/x-www-urlencoded);
+To POST to a URL using a data payload instead of parameters embedded in the URL, use the `application/x-www-form-urlencoded` content type.
 
-To access binary content, you must coerce the content from the defeault `varchar` representation to a `bytea` representation using the `textsend` function. Using the default `varchar::bytea` cast will not work, as the cast will stop the first time it hits a zero-valued byte (common in binary data).
+    SELECT status, content 
+      FROM http_post('http://localhost/myform',
+                     'myvar=myval&foo=bar',
+                     'application/x-www-form-urlencoded);
+
+
+Remember to [URL encode](http://en.wikipedia.org/wiki/Percent-encoding) content that includes any "special" characters (really, anything other than a-z and 0-9). 
+
+    SELECT status, content 
+      FROM http_post('http://localhost/myform',
+                     'myvar=' || urlencode('my special string & things?'),
+                     'application/x-www-form-urlencoded);
+
+To access binary content, you must coerce the content from the default `varchar` representation to a `bytea` representation using the `textsend` function. Using the default `varchar::bytea` cast will not work, as the cast will stop the first time it hits a zero-valued byte (common in binary data).
 
     WITH 
       http AS ( 
