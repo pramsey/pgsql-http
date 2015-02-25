@@ -41,7 +41,6 @@
 #include <fmgr.h>
 #include <funcapi.h>
 #include <access/htup.h>
-#include <access/htup_details.h>
 #include <catalog/namespace.h>
 #include <lib/stringinfo.h>
 #include <utils/array.h>
@@ -49,6 +48,10 @@
 #include <utils/lsyscache.h>
 #include <utils/syscache.h>
 #include <utils/typcache.h>
+
+#if PG_VERSION_NUM >= 90300
+#include <access/htup_details.h>
+#endif
 
 /* CURL */
 #include <curl/curl.h>
