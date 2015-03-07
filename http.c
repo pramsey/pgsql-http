@@ -630,7 +630,7 @@ Datum urlencode(PG_FUNCTION_ARGS)
 			PG_RETURN_NULL();
 		
 		/* Move pointer forward */
-		ptr+= 3;
+		ptr += 3;
 	}
 	*ptr = '\0';
 	
