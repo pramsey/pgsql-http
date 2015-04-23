@@ -201,7 +201,11 @@ header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
 static Oid
 lookup_type_oid(const char *typname)
 {
+#if PG_VERSION_NUM < 90300
+	Oid namesp = LookupExplicitNamespace("public");
+#else
 	Oid namesp = LookupExplicitNamespace("public", false);
+#endif
 	Oid typoid = GetSysCacheOid2(TYPENAMENSP, CStringGetDatum(typname), ObjectIdGetDatum(namesp));
 	if (OidIsValid(typoid) && get_typisdefined(typoid))
 		return typoid;
@@ -343,7 +347,10 @@ Datum http_request(PG_FUNCTION_ARGS)
 	if ( ! PG_ARGISNULL(0) )
 		rec = PG_GETARG_HEAPTUPLEHEADER(0);
 	else
+	{
 		elog(ERROR, "An http_request must be provided");
+		PG_RETURN_NULL();
+	}
 	
 	/* Extract type info from the tuple itself */
 	tup_type = HeapTupleHeaderGetTypeId(rec);
