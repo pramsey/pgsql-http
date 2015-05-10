@@ -228,7 +228,6 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 
 		for ( i = 0; i < nelems; i++ )
 		{
-
 			/* Only handle non-NULL entries */
 			/* PgSQL arrays have a complex null handling scheme */
 			if ((bitmap && (*bitmap & bitmask) != 0) || !bitmap)
@@ -245,9 +244,8 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 				Datum *values = (Datum *) palloc0(ncolumns * sizeof(Datum));
 				bool *nulls = (bool *) palloc0(ncolumns * sizeof(bool));
 
-				HeapTupleData tuple;
-
 				/* Build a temporary HeapTuple control structure */
+				HeapTupleData tuple;
 				tuple.t_len = tup_len;
 				ItemPointerSetInvalid(&(tuple.t_self));
 				tuple.t_tableOid = InvalidOid;
@@ -304,7 +302,6 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 				}
 			}
 		}
-
 	}
 	return headers;
 }
