@@ -196,24 +196,6 @@ header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
 }
 
 /**
-* Lookup the type Oid from a type name string.
-*/
-static Oid
-lookup_type_oid(const char *typname)
-{
-#if PG_VERSION_NUM < 90300
-	Oid namesp = LookupExplicitNamespace("public");
-#else
-	Oid namesp = LookupExplicitNamespace("public", false);
-#endif
-	Oid typoid = GetSysCacheOid2(TYPENAMENSP, CStringGetDatum(typname), ObjectIdGetDatum(namesp));
-	if (OidIsValid(typoid) && get_typisdefined(typoid))
-		return typoid;
-	else
-		return InvalidOid;
-}
-
-/**
 * Quick and dirty, remove all \r from a StringInfo.
 */
 static void
@@ -362,7 +344,7 @@ header_string_to_array(StringInfo si)
 	header_tuple_desc = RelationNameGetTupleDesc("http_header");
 
 	/* Prepare array building metadata */
-	elem_type = lookup_type_oid("http_header");
+	elem_type = header_tuple_desc->tdtypeid;		
 	get_typlenbyvalalign(elem_type, &elem_len, &elem_byval, &elem_align);
 
 	/* Loop through string, matching regex pattern */
