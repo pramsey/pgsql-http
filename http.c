@@ -426,6 +426,10 @@ Datum http_request(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 	}
 
+	/*************************************************************************
+	* Build and run a curl request from the http_request argument
+	*************************************************************************/
+
 	/* Extract type info from the tuple itself */
 	tup_type = HeapTupleHeaderGetTypeId(rec);
 	tup_typmod = HeapTupleHeaderGetTypMod(rec);
@@ -517,7 +521,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		/* Read the content type */
 		if ( nulls[REQ_CONTENT_TYPE] )
 			elog(ERROR, "http_request.content_type is NULL");
-		content_type = text_to_cstring(DatumGetTextP(values[REQ_CONTENT_TYPE]));
+		content_type = TextDatumGetCString(values[REQ_CONTENT_TYPE]);
 
 		/* Add content type to the headers */
 		snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
@@ -565,6 +569,9 @@ Datum http_request(PG_FUNCTION_ARGS)
 	pfree(values);
 	pfree(nulls);
 
+	/*************************************************************************
+	* Create an http_response object from the curl results
+	*************************************************************************/
 
 	/* Write out an error on failure */
 	if ( http_return )
