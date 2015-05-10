@@ -13,10 +13,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
  * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -113,7 +113,7 @@ void _PG_fini(void)
 }
 
 /**
-* This function is passed into CURL as the CURLOPT_WRITEFUNCTION, 
+* This function is passed into CURL as the CURLOPT_WRITEFUNCTION,
 * this allows the  return values to be held in memory, in our case in a string.
 */
 static size_t
@@ -121,12 +121,12 @@ http_writeback(void *contents, size_t size, size_t nmemb, void *userp)
 {
 	size_t realsize = size * nmemb;
 	StringInfo si = (StringInfo)userp;
-	appendBinaryStringInfo(si, (const char*)contents, (int)realsize);	
+	appendBinaryStringInfo(si, (const char*)contents, (int)realsize);
 	return realsize;
 }
 
 /**
-* This function is passed into CURL as the CURLOPT_READFUNCTION, 
+* This function is passed into CURL as the CURLOPT_READFUNCTION,
 * this allows the PUT operation to read the data it needs.
 */
 static size_t
@@ -139,7 +139,7 @@ http_readback(void *buffer, size_t size, size_t nitems, void *instream)
 	return realsize;
 }
 
-	
+
 /* Utility macro to try a setopt and catch an error */
 #define CURL_SETOPT(handle, opt, value) do { \
 	err = curl_easy_setopt((handle), (opt), (value)); \
@@ -154,7 +154,7 @@ http_readback(void *buffer, size_t size, size_t nitems, void *instream)
 /**
 *  Convert a request type string into the appropriate enumeration value.
 */
-static http_method 
+static http_method
 request_type(const char *method)
 {
 	if ( strcasecmp(method, "GET") == 0 )
@@ -179,12 +179,12 @@ header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
 	int ncolumns;
 	Datum *header_values;
 	bool *header_nulls;
-	
+
 	/* Prepare our return object */
 	ncolumns = header_tuple_desc->natts;
 	header_values = palloc0(sizeof(Datum)*ncolumns);
 	header_nulls = palloc0(sizeof(bool)*ncolumns);
-	
+
 	header_values[HEADER_FIELD] = CStringGetTextDatum(field);
 	header_nulls[HEADER_FIELD] = false;
 	header_values[HEADER_VALUE] = CStringGetTextDatum(value);
@@ -192,7 +192,7 @@ header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
 
 	/* Build up a tuple from values/nulls lists */
 	header_tuple = heap_form_tuple(header_tuple_desc, header_values, header_nulls);
-	return HeapTupleGetDatum(header_tuple);		
+	return HeapTupleGetDatum(header_tuple);
 }
 
 /**
@@ -210,7 +210,7 @@ lookup_type_oid(const char *typname)
 	if (OidIsValid(typoid) && get_typisdefined(typoid))
 		return typoid;
 	else
-		return InvalidOid;	
+		return InvalidOid;
 }
 
 /**
@@ -236,7 +236,7 @@ static struct curl_slist *
 header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 {
 	int nelems = ArrayGetNItems(ARR_NDIM(array), ARR_DIMS(array));
-	
+
 	if ( nelems > 0 )
 	{
 		bits8 *bitmap = ARR_NULLBITMAP(array);
@@ -261,7 +261,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 
 				/* Prepare for values / nulls to hold the data */
 				Datum *values = (Datum *) palloc0(ncolumns * sizeof(Datum));
-				bool *nulls = (bool *) palloc0(ncolumns * sizeof(bool));		
+				bool *nulls = (bool *) palloc0(ncolumns * sizeof(bool));
 
 				HeapTupleData tuple;
 
@@ -280,7 +280,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 					char buffer[1024];
 					char *header_val;
 					char *header_fld = TextDatumGetCString(values[HEADER_FIELD]);
-					
+
 					/* Don't process "content-type" in the optional headers */
 					if ( strncasecmp(header_fld, "Content-Type", 12) == 0 )
 					{
@@ -290,25 +290,25 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 
 					if ( nulls[HEADER_VALUE] )
 						header_val = pstrdup("");
-					else 	
+					else
 						header_val = TextDatumGetCString(values[HEADER_VALUE]);
-					
+
 					snprintf(buffer, sizeof(buffer), "%s: %s", header_fld, header_val);
 					elog(DEBUG3, "HTTP: optional request header  '%s'", buffer);
 					headers = curl_slist_append(headers, buffer);
 					pfree(header_fld);
-					pfree(header_val);						
+					pfree(header_val);
 				}
-				
+
 				/* Advance the array read pointer */
 				offset += INTALIGN(tup_len);
-				
+
 				/* Free all the temporary structures */
 				ReleaseTupleDesc(tup_desc);
 				pfree(values);
 				pfree(nulls);
 			}
-			
+
 			/* Advance array NULL bitmap */
 			if (bitmap)
 			{
@@ -319,9 +319,9 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 					bitmask = 1;
 				}
 			}
-		}		
-		
-	}	
+		}
+
+	}
 	return headers;
 }
 
@@ -340,10 +340,10 @@ header_string_to_array(StringInfo si)
 	int16 elem_len;
 	bool elem_byval;
 	char elem_align;
-	
+
 	/* Header handling */
 	TupleDesc header_tuple_desc;
-	
+
 	/* Regex support */
 	const char *regex_pattern = "^([^ \t\r\n\v\f]+): ?([^ \t\r\n\v\f]+.*)$";
 	regex_t regex;
@@ -352,19 +352,19 @@ header_string_to_array(StringInfo si)
 	static int rvsz = 256;
 	char rv1[rvsz];
 	char rv2[rvsz];
-	
+
 	/* Compile the regular expression */
 	reti = regcomp(&regex, regex_pattern, REG_ICASE | REG_EXTENDED | REG_NEWLINE );
 	if ( reti )
 		elog(ERROR, "Unable to compile regex pattern '%s'", regex_pattern);
-	
+
 	/* Prepare tuple building metadata */
 	header_tuple_desc = RelationNameGetTupleDesc("http_header");
-	
-	/* Prepare array building metadata */	
+
+	/* Prepare array building metadata */
 	elem_type = lookup_type_oid("http_header");
-	get_typlenbyvalalign(elem_type, &elem_len, &elem_byval, &elem_align);	
-	
+	get_typlenbyvalalign(elem_type, &elem_len, &elem_byval, &elem_align);
+
 	/* Loop through string, matching regex pattern */
 	si->cursor = 0;
 	while ( ! regexec(&regex, si->data+si->cursor, 3, pmatch, 0) )
@@ -375,16 +375,16 @@ header_string_to_array(StringInfo si)
 		int eo1 = pmatch[1].rm_eo;
 		int so2 = pmatch[2].rm_so;
 		int eo2 = pmatch[2].rm_eo;
-		
+
 		/* Copy the matched portions out of the string */
 		memcpy(rv1, si->data+si->cursor+so1, eo1-so1 < rvsz ? eo1-so1 : rvsz);
 		rv1[eo1-so1] = '\0';
 		memcpy(rv2, si->data+si->cursor+so2, eo2-so2 < rvsz ? eo2-so2 : rvsz);
 		rv2[eo2-so2] = '\0';
-	
+
 		/* Move forward for next match */
 		si->cursor += eo0;
-		
+
 		/* Increase elements array size if necessary */
 		if ( arr_nelems >= arr_elems_size )
 		{
@@ -392,11 +392,11 @@ header_string_to_array(StringInfo si)
 			arr_elems = repalloc(arr_elems, arr_elems_size*sizeof(Datum));
 		}
 		arr_elems[arr_nelems] = header_tuple(header_tuple_desc, rv1, rv2);
-		arr_nelems++;		
+		arr_nelems++;
 	}
-	
+
 	ReleaseTupleDesc(header_tuple_desc);
-	return construct_array(arr_elems, arr_nelems, elem_type, elem_len, elem_byval, elem_align);	
+	return construct_array(arr_elems, arr_nelems, elem_type, elem_len, elem_byval, elem_align);
 }
 
 /**
@@ -416,19 +416,19 @@ Datum http_request(PG_FUNCTION_ARGS)
 	int ncolumns;
 	Datum *values;
 	bool *nulls;
-	
+
 	const char *uri;
 	http_method method;
-	
+
 	/* Processing */
 	CURL *http_handle = NULL;
-	CURLcode err; 
+	CURLcode err;
 	char *http_error_buffer = NULL;
 	struct curl_slist *headers = NULL;
 	StringInfoData si_data;
 	StringInfoData si_headers;
 	StringInfoData si_read;
-	
+
 	int http_return;
 	long status;
 	char *content_type = NULL;
@@ -444,13 +444,13 @@ Datum http_request(PG_FUNCTION_ARGS)
 		elog(ERROR, "An http_request must be provided");
 		PG_RETURN_NULL();
 	}
-	
+
 	/* Extract type info from the tuple itself */
 	tup_type = HeapTupleHeaderGetTypeId(rec);
 	tup_typmod = HeapTupleHeaderGetTypMod(rec);
 	tup_desc = lookup_rowtype_tupdesc(tup_type, tup_typmod);
 	ncolumns = tup_desc->natts;
-	
+
 	/* Build a temporary HeapTuple control structure */
 	tuple.t_len = HeapTupleHeaderGetDatumLength(rec);
 	ItemPointerSetInvalid(&(tuple.t_self));
@@ -463,7 +463,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 	/* Break down the tuple into values/nulls lists */
 	heap_deform_tuple(&tuple, tup_desc, values, nulls);
-	
+
 	/* Read the URI */
 	if ( nulls[REQ_URI] )
 		elog(ERROR, "http_request.uri is NULL");
@@ -483,41 +483,41 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 	/* Set the user agent */
 	CURL_SETOPT(http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
-	
+
 	/* Keep sockets from being held open */
-	CURL_SETOPT(http_handle, CURLOPT_FORBID_REUSE, 1);	
+	CURL_SETOPT(http_handle, CURLOPT_FORBID_REUSE, 1);
 
 	/* Set up the error buffer */
 	http_error_buffer = palloc0(CURL_ERROR_SIZE);
 	CURL_SETOPT(http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
-	
+
 	/* Set up the write-back function */
 	CURL_SETOPT(http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
-	
+
 	/* Set up the write-back buffer */
 	initStringInfo(&si_data);
-	initStringInfo(&si_headers);		
+	initStringInfo(&si_headers);
 	CURL_SETOPT(http_handle, CURLOPT_WRITEDATA, (void*)(&si_data));
 	CURL_SETOPT(http_handle, CURLOPT_WRITEHEADER, (void*)(&si_headers));
-	
+
 	/* Set up the HTTP timeout */
 	CURL_SETOPT(http_handle, CURLOPT_TIMEOUT, 5);
 	CURL_SETOPT(http_handle, CURLOPT_CONNECTTIMEOUT, 1);
 
-	/* Set up the HTTP content encoding to gzip */
+	/* Set the HTTP content encoding to gzip */
 	/*curl_easy_setopt(http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING);*/
 
 	/* Follow redirects, as many as 5 */
 	CURL_SETOPT(http_handle, CURLOPT_FOLLOWLOCATION, 1);
-	CURL_SETOPT(http_handle, CURLOPT_MAXREDIRS, 5);	
-	
+	CURL_SETOPT(http_handle, CURLOPT_MAXREDIRS, 5);
+
 	/* Add a close option to the headers to avoid open network sockets */
 	headers = curl_slist_append(headers, "Connection: close");
 	CURL_SETOPT(http_handle, CURLOPT_HTTPHEADER, headers);
-	
+
 	/* Let our charset preference be known */
 	headers = curl_slist_append(headers, "Charsets: utf-8");
-	
+
 	/* Handle optional headers */
 	if ( ! nulls[REQ_HEADERS] )
 	{
@@ -542,13 +542,13 @@ Datum http_request(PG_FUNCTION_ARGS)
 		snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
 		headers = curl_slist_append(headers, buffer);
 		pfree(content_type);
-		
+
 		/* Read the content */
 		if ( nulls[REQ_CONTENT] )
 			elog(ERROR, "http_request.content is NULL");
 		content_text = DatumGetTextP(values[REQ_CONTENT]);
 		content_size = VARSIZE(content_text) - VARHDRSZ;
-		
+
 		if ( method == HTTP_POST )
 		{
 			/* Add the content to the payload */
@@ -564,18 +564,18 @@ Datum http_request(PG_FUNCTION_ARGS)
 			CURL_SETOPT(http_handle, CURLOPT_READDATA, &si_read);
 			CURL_SETOPT(http_handle, CURLOPT_INFILESIZE, content_size);
 		}
-		else 
+		else
 		{
 			/* Never get here */
 			elog(ERROR, "illegal HTTP method");
 		}
 	}
 	else if ( method == HTTP_DELETE )
-	{		
+	{
 		CURL_SETOPT(http_handle, CURLOPT_CUSTOMREQUEST, "DELETE");
 	}
 
-	/* Run it! */ 
+	/* Run it! */
 	http_return = curl_easy_perform(http_handle);
 	elog(DEBUG2, "pgsql-http: queried %s", uri);
 
@@ -601,7 +601,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		curl_slist_free_all(headers);
 		ereport(ERROR, (errmsg("CURL: Error in curl_easy_getinfo")));
 	}
-	
+
 	/* Prepare our return object */
 	tup_desc = RelationNameGetTupleDesc("http_response");
 	ncolumns = tup_desc->natts;
@@ -617,13 +617,13 @@ Datum http_request(PG_FUNCTION_ARGS)
 	{
 		values[RESP_CONTENT_TYPE] = CStringGetTextDatum(content_type);
 		nulls[RESP_CONTENT_TYPE] = false;
-	}	
+	}
 	else
 	{
 		values[RESP_CONTENT_TYPE] = (Datum)0;
 		nulls[RESP_CONTENT_TYPE] = true;
 	}
-	
+
 	/* Headers array */
 	if ( si_headers.len )
 	{
@@ -653,7 +653,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 	/* Build up a tuple from values/nulls lists */
 	tuple_out = heap_form_tuple(tup_desc, values, nulls);
-		
+
 	/* Clean up */
 	ReleaseTupleDesc(tup_desc);
 	curl_easy_cleanup(http_handle);
@@ -665,7 +665,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	pfree(nulls);
 
 	/* Return */
-	PG_RETURN_DATUM(HeapTupleGetDatum(tuple_out));	
+	PG_RETURN_DATUM(HeapTupleGetDatum(tuple_out));
 }
 
 
@@ -704,17 +704,17 @@ Datum urlencode(PG_FUNCTION_ARGS)
 	size_t txt_size = VARSIZE(txt) - VARHDRSZ;
 	char *str_in, *str_out, *ptr;
 	int i, rv;
-	
+
 	/* Point into the string */
 	str_in = VARDATA(txt);
-	
+
 	/* Prepare the output string */
 	str_out = palloc0(txt_size * 4);
 	ptr = str_out;
-	
+
 	for ( i = 0; i < txt_size; i++ )
 	{
-		
+
 		/* Break on NULL */
 		if ( str_in[i] == '\0' )
 			break;
@@ -726,7 +726,7 @@ Datum urlencode(PG_FUNCTION_ARGS)
 			ptr++;
 			continue;
 		}
-		
+
 		/* Pass basic characters through */
 		if ( str_in[i] < 127 && chars_to_not_encode[(int)(str_in[i])] )
 		{
@@ -734,17 +734,17 @@ Datum urlencode(PG_FUNCTION_ARGS)
 			ptr++;
 			continue;
 		}
-		
+
 		/* Encode the remaining chars */
 		rv = snprintf(ptr, 4, "%%%02X", str_in[i]);
 		if ( rv < 0 )
 			PG_RETURN_NULL();
-		
+
 		/* Move pointer forward */
 		ptr += 3;
 	}
 	*ptr = '\0';
-	
+
 	PG_RETURN_TEXT_P(cstring_to_text(str_out));
 }
 
