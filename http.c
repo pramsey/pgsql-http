@@ -232,6 +232,99 @@ string_info_remove_cr(StringInfo si)
 	return;
 }
 
+static struct curl_slist *
+header_array_to_slist(ArrayType *array, struct curl_slist *headers)
+{
+	int nelems = ArrayGetNItems(ARR_NDIM(array), ARR_DIMS(array));
+	
+	if ( nelems > 0 )
+	{
+		bits8 *bitmap = ARR_NULLBITMAP(array);
+		int bitmask = 1;
+		int i;
+		size_t offset = 0;
+
+		for ( i = 0; i < nelems; i++ )
+		{
+
+			/* Only handle non-NULL entries */
+			/* PgSQL arrays have a complex null handling scheme */
+			if ((bitmap && (*bitmap & bitmask) != 0) || !bitmap)
+			{
+				/* Read metadata about the tuple */
+				HeapTupleHeader rec = DatumGetHeapTupleHeader(ARR_DATA_PTR(array)+offset);
+				Oid tup_type = HeapTupleHeaderGetTypeId(rec);
+				int32 tup_typmod = HeapTupleHeaderGetTypMod(rec);
+				TupleDesc tup_desc = lookup_rowtype_tupdesc(tup_type, tup_typmod);
+				int ncolumns = tup_desc->natts;
+				size_t tup_len = HeapTupleHeaderGetDatumLength(rec);
+
+				/* Prepare for values / nulls to hold the data */
+				Datum *values = (Datum *) palloc0(ncolumns * sizeof(Datum));
+				bool *nulls = (bool *) palloc0(ncolumns * sizeof(bool));		
+
+				HeapTupleData tuple;
+
+				/* Build a temporary HeapTuple control structure */
+				tuple.t_len = tup_len;
+				ItemPointerSetInvalid(&(tuple.t_self));
+				tuple.t_tableOid = InvalidOid;
+				tuple.t_data = rec;
+
+				/* Break down the tuple into values/nulls lists */
+				heap_deform_tuple(&tuple, tup_desc, values, nulls);
+
+				/* Convert the data into a header */
+				if ( ! nulls[HEADER_FIELD] )
+				{
+					char buffer[1024];
+					char *header_val;
+					char *header_fld = TextDatumGetCString(values[HEADER_FIELD]);
+					
+					/* Don't process "content-type" in the optional headers */
+					if ( strncasecmp(header_fld, "Content-Type", 12) == 0 )
+					{
+						elog(NOTICE, "'Content-Type' is not supported as an optional header");
+						continue;
+					}
+
+					if ( nulls[HEADER_VALUE] )
+						header_val = pstrdup("");
+					else 	
+						header_val = TextDatumGetCString(values[HEADER_VALUE]);
+					
+					snprintf(buffer, sizeof(buffer), "%s: %s", header_fld, header_val);
+					elog(DEBUG3, "HTTP: optional request header  '%s'", buffer);
+					headers = curl_slist_append(headers, buffer);
+					pfree(header_fld);
+					pfree(header_val);						
+				}
+				
+				/* Advance the array read pointer */
+				offset += INTALIGN(tup_len);
+				
+				/* Free all the temporary structures */
+				ReleaseTupleDesc(tup_desc);
+				pfree(values);
+				pfree(nulls);
+			}
+			
+			/* Advance array NULL bitmap */
+			if (bitmap)
+			{
+				bitmask <<= 1;
+				if (bitmask == 0x100)
+				{
+					bitmap++;
+					bitmask = 1;
+				}
+			}
+		}		
+		
+	}	
+	return headers;
+}
+
 /**
 * Convert a string of headers separated by newlines/CRs into an
 * array of http_header tuples.
@@ -425,7 +518,12 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Let our charset preference be known */
 	headers = curl_slist_append(headers, "Charsets: utf-8");
 	
-	/* TODO: actually handle optional headers here */
+	/* Handle optional headers */
+	if ( ! nulls[REQ_HEADERS] )
+	{
+		ArrayType *array = DatumGetArrayTypeP(values[REQ_HEADERS]);
+		headers = header_array_to_slist(array, headers);
+	}
 
 	/* Specific handling for methods that send a content payload */
 	if ( method == HTTP_POST || method == HTTP_PUT )
@@ -434,7 +532,6 @@ Datum http_request(PG_FUNCTION_ARGS)
 		size_t content_size;
 		char *content_type;
 		char buffer[1024];
-		size_t buffersz = sizeof(buffer);
 
 		/* Read the content type */
 		if ( nulls[REQ_CONTENT_TYPE] )
@@ -442,7 +539,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		content_type = text_to_cstring(DatumGetTextP(values[REQ_CONTENT_TYPE]));
 
 		/* Add content type to the headers */
-		snprintf(buffer, buffersz, "Content-Type: %s", content_type);
+		snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
 		headers = curl_slist_append(headers, buffer);
 		pfree(content_type);
 		
@@ -470,6 +567,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		else 
 		{
 			/* Never get here */
+			elog(ERROR, "illegal HTTP method");
 		}
 	}
 	else if ( method == HTTP_DELETE )
@@ -485,6 +583,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	ReleaseTupleDesc(tup_desc);
 	pfree(values);
 	pfree(nulls);
+
 
 	/* Write out an error on failure */
 	if ( http_return )
@@ -562,6 +661,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 	pfree(http_error_buffer);
 	pfree(si_headers.data);
 	pfree(si_data.data);
+	pfree(values);
+	pfree(nulls);
 
 	/* Return */
 	PG_RETURN_DATUM(HeapTupleGetDatum(tuple_out));	
