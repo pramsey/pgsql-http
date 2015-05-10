@@ -257,6 +257,8 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 				heap_deform_tuple(&tuple, tup_desc, values, nulls);
 
 				/* Convert the data into a header */
+				/* TODO: Ensure the header list is unique? Or leave that to the */
+				/* server to deal with. */
 				if ( ! nulls[HEADER_FIELD] )
 				{
 					char buffer[1024];
