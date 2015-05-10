@@ -264,7 +264,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 					char *header_fld = TextDatumGetCString(values[HEADER_FIELD]);
 
 					/* Don't process "content-type" in the optional headers */
-					if ( strncasecmp(header_fld, "Content-Type", 12) == 0 )
+					if ( strlen(header_fld) <= 0 || strncasecmp(header_fld, "Content-Type", 12) == 0 )
 					{
 						elog(NOTICE, "'Content-Type' is not supported as an optional header");
 						continue;
