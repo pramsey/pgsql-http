@@ -139,13 +139,21 @@ http_readback(void *buffer, size_t size, size_t nitems, void *instream)
 	return realsize;
 }
 
+static void
+http_error(CURLcode err, char *error_buffer) 
+{
+	if ( strlen(error_buffer) > 0 )
+		ereport(ERROR, (errmsg("%s", error_buffer)));
+	else
+		ereport(ERROR, (errmsg("%s", curl_easy_strerror(err))));
+}
 
 /* Utility macro to try a setopt and catch an error */
 #define CURL_SETOPT(handle, opt, value) do { \
 	err = curl_easy_setopt((handle), (opt), (value)); \
 	if ( err != CURLE_OK ) \
 	{ \
-		elog(ERROR, "CURL error: %s", curl_easy_strerror(err)); \
+		http_error(err, http_error_buffer); \
 		PG_RETURN_NULL(); \
 	} \
 	} while (0);
@@ -279,7 +287,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 						header_val = TextDatumGetCString(values[HEADER_VALUE]);
 
 					snprintf(buffer, sizeof(buffer), "%s: %s", header_fld, header_val);
-					elog(DEBUG3, "HTTP: optional request header  '%s'", buffer);
+					elog(DEBUG2, "pgsql-http: optional request header '%s'", buffer);
 					headers = curl_slist_append(headers, buffer);
 					pfree(header_fld);
 					pfree(header_val);
@@ -401,7 +409,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 	Datum *values;
 	bool *nulls;
 
-	const char *uri;
+	char *uri;
+	char *method_str;
 	http_method method;
 
 	/* Processing */
@@ -464,7 +473,10 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Read the method */
 	if ( nulls[REQ_METHOD] )
 		elog(ERROR, "http_request.method is NULL");
-	method = request_type(TextDatumGetCString(values[REQ_METHOD]));
+	method_str = TextDatumGetCString(values[REQ_METHOD]);
+	method = request_type(method_str);
+	elog(DEBUG2, "pgsql-http: method '%s'", method_str);
+	pfree(method_str);
 
 	/* Initialize CURL */
 	if ( ! (http_handle = curl_easy_init()) )
@@ -504,7 +516,6 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 	/* Add a close option to the headers to avoid open network sockets */
 	headers = curl_slist_append(headers, "Connection: close");
-	CURL_SETOPT(http_handle, CURLOPT_HTTPHEADER, headers);
 
 	/* Let our charset preference be known */
 	headers = curl_slist_append(headers, "Charsets: utf-8");
@@ -566,6 +577,9 @@ Datum http_request(PG_FUNCTION_ARGS)
 		CURL_SETOPT(http_handle, CURLOPT_CUSTOMREQUEST, "DELETE");
 	}
 
+	/* Set the headers */
+	CURL_SETOPT(http_handle, CURLOPT_HTTPHEADER, headers);
+
 	/* Run it! */
 	http_return = curl_easy_perform(http_handle);
 	elog(DEBUG2, "pgsql-http: queried %s", uri);
@@ -584,11 +598,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	{
 		curl_slist_free_all(headers);
 		curl_easy_cleanup(http_handle);
-		
-		if ( strlen(http_error_buffer) > 0 )
-			ereport(ERROR, (errmsg("%s", http_error_buffer)));
-		else
-			ereport(ERROR, (errmsg("%s", curl_easy_strerror(http_return))));
+		http_error(http_return, http_error_buffer);
 	}
 
 	/* Read the metadata from the handle directly */

@@ -20,18 +20,18 @@ CREATE TYPE http_header AS (
 );
 
 CREATE TYPE http_response AS (
-	status INTEGER,
-	content_type VARCHAR,
-	headers http_header[],
-	content VARCHAR
+    status INTEGER,
+    content_type VARCHAR,
+    headers http_header[],
+    content VARCHAR
 );
 
 CREATE TYPE http_request AS (
-	method http_method,
+    method http_method,
     uri VARCHAR,
-	headers http_header[],
-	content_type VARCHAR,
-	content VARCHAR
+    headers http_header[],
+    content_type VARCHAR,
+    content VARCHAR
 );
 
 CREATE OR REPLACE FUNCTION http_header (field VARCHAR, value VARCHAR) 
@@ -45,28 +45,28 @@ CREATE OR REPLACE FUNCTION http(request http_request)
     LANGUAGE 'c';
 
 CREATE OR REPLACE FUNCTION http_get(uri VARCHAR)
-	RETURNS http_response
-	AS $$ SELECT http(('GET', $1, NULL, NULL, NULL)::http_request) $$
+    RETURNS http_response
+    AS $$ SELECT http(('GET', $1, NULL, NULL, NULL)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_post(uri VARCHAR, content VARCHAR, content_type VARCHAR)
-	RETURNS http_response
-	AS $$ SELECT http(('POST', $1, NULL, $2, $3)::http_request) $$
+    RETURNS http_response
+    AS $$ SELECT http(('POST', $1, NULL, $2, $3)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_put(uri VARCHAR, content VARCHAR, content_type VARCHAR)
-	RETURNS http_response
-	AS $$ SELECT http(('PUT', $1, NULL, $2, $3)::http_request) $$
+    RETURNS http_response
+    AS $$ SELECT http(('PUT', $1, NULL, $2, $3)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_delete(uri VARCHAR)
-	RETURNS http_response
-	AS $$ SELECT http(('DELETE', $1, NULL, NULL, NULL)::http_request) $$
+    RETURNS http_response
+    AS $$ SELECT http(('DELETE', $1, NULL, NULL, NULL)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION urlencode(string VARCHAR)
-	RETURNS TEXT
-	AS 'MODULE_PATHNAME'
-	LANGUAGE 'c'
-	IMMUTABLE STRICT;
+    RETURNS TEXT
+    AS 'MODULE_PATHNAME'
+    LANGUAGE 'c'
+    IMMUTABLE STRICT;
 
