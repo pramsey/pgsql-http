@@ -4,7 +4,7 @@
  * Purpose:  Main file.
  *
  ***********************************************************************
- * Copyright 2014 Paul Ramsey <pramsey@cleverelephant.ca>
+ * Copyright 2015 Paul Ramsey <pramsey@cleverelephant.ca>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -214,6 +214,9 @@ string_info_remove_cr(StringInfo si)
 	return;
 }
 
+/**
+* Add an array of http_header tuples into a Curl string list.
+*/
 static struct curl_slist *
 header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 {
