@@ -430,6 +430,21 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Output */
 	HeapTuple tuple_out;
 
+
+	/* Version check */
+	curl_version_info_data *version_info = curl_version_info(CURLVERSION_NOW);
+	elog(DEBUG2, "pgsql-http: curl version %s", version_info->version);
+	elog(DEBUG2, "pgsql-http: curl version number 0x%x", version_info->version_num);
+	elog(DEBUG2, "pgsql-http: ssl version %s", version_info->ssl_version);
+
+	/* 0x071400 == 7.20.0, each hex digit is for one version level (0xMMmmpp) */
+	if ( version_info->version_num < 0x071400 )
+	{
+		elog(ERROR, "pgsql-http requires Curl version 0.7.20 or higher");
+		PG_RETURN_NULL();
+	}
+
+
 	/* We cannot handle a null request */
 	if ( ! PG_ARGISNULL(0) )
 		rec = PG_GETARG_HEAPTUPLEHEADER(0);
