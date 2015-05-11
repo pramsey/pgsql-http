@@ -404,7 +404,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Processing */
 	CURL *http_handle = NULL;
 	CURLcode err;
-	char *http_error_buffer = NULL;
+	char http_error_buffer[CURL_ERROR_SIZE];
+	
 	struct curl_slist *headers = NULL;
 	StringInfoData si_data;
 	StringInfoData si_headers;
@@ -429,6 +430,9 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/*************************************************************************
 	* Build and run a curl request from the http_request argument
 	*************************************************************************/
+
+	/* Zero out static memory */
+	memset(http_error_buffer, 0, sizeof(http_error_buffer));
 
 	/* Extract type info from the tuple itself */
 	tup_type = HeapTupleHeaderGetTypeId(rec);
@@ -473,7 +477,6 @@ Datum http_request(PG_FUNCTION_ARGS)
 	CURL_SETOPT(http_handle, CURLOPT_FORBID_REUSE, 1);
 
 	/* Set up the error buffer */
-	http_error_buffer = palloc0(CURL_ERROR_SIZE);
 	CURL_SETOPT(http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
 
 	/* Set up the write-back function */
@@ -574,19 +577,23 @@ Datum http_request(PG_FUNCTION_ARGS)
 	*************************************************************************/
 
 	/* Write out an error on failure */
-	if ( http_return )
+	if ( http_return != CURLE_OK )
 	{
-		curl_easy_cleanup(http_handle);
 		curl_slist_free_all(headers);
-		ereport(ERROR, (errmsg("CURL: %s", http_error_buffer)));
+		curl_easy_cleanup(http_handle);
+		
+		if ( strlen(http_error_buffer) > 0 )
+			ereport(ERROR, (errmsg("%s", http_error_buffer)));
+		else
+			ereport(ERROR, (errmsg("%s", curl_easy_strerror(http_return))));
 	}
 
 	/* Read the metadata from the handle directly */
 	if ( (CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_RESPONSE_CODE, &status)) ||
 	     (CURLE_OK != curl_easy_getinfo(http_handle, CURLINFO_CONTENT_TYPE, &content_type)) )
 	{
-		curl_easy_cleanup(http_handle);
 		curl_slist_free_all(headers);
+		curl_easy_cleanup(http_handle);
 		ereport(ERROR, (errmsg("CURL: Error in curl_easy_getinfo")));
 	}
 
@@ -646,7 +653,6 @@ Datum http_request(PG_FUNCTION_ARGS)
 	ReleaseTupleDesc(tup_desc);
 	curl_easy_cleanup(http_handle);
 	curl_slist_free_all(headers);
-	pfree(http_error_buffer);
 	pfree(si_headers.data);
 	pfree(si_data.data);
 	pfree(values);

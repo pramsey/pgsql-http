@@ -36,7 +36,7 @@ CREATE TYPE http_request AS (
 
 CREATE OR REPLACE FUNCTION http_header (field VARCHAR, value VARCHAR) 
     RETURNS http_header
-    AS $$ SELECT field, value $$ 
+    AS $$ SELECT $1, $2 $$ 
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http(request http_request)
@@ -46,22 +46,22 @@ CREATE OR REPLACE FUNCTION http(request http_request)
 
 CREATE OR REPLACE FUNCTION http_get(uri VARCHAR)
 	RETURNS http_response
-	AS $$ SELECT http(('GET', uri, NULL, NULL, NULL)::http_request) $$
+	AS $$ SELECT http(('GET', $1, NULL, NULL, NULL)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_post(uri VARCHAR, content VARCHAR, content_type VARCHAR)
 	RETURNS http_response
-	AS $$ SELECT http(('POST', uri, NULL, content_type, content)::http_request) $$
+	AS $$ SELECT http(('POST', $1, NULL, $2, $3)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_put(uri VARCHAR, content VARCHAR, content_type VARCHAR)
 	RETURNS http_response
-	AS $$ SELECT http(('PUT', uri, NULL, content_type, content)::http_request) $$
+	AS $$ SELECT http(('PUT', $1, NULL, $2, $3)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_delete(uri VARCHAR)
 	RETURNS http_response
-	AS $$ SELECT http(('DELETE', uri, NULL, NULL, NULL)::http_request) $$
+	AS $$ SELECT http(('DELETE', $1, NULL, NULL, NULL)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION urlencode(string VARCHAR)
