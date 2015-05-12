@@ -597,7 +597,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 	/* Run it! */
 	http_return = curl_easy_perform(http_handle);
-	elog(DEBUG2, "pgsql-http: queried %s", uri);
+	elog(DEBUG2, "pgsql-http: queried '%s'", uri);
 
 	/* Clean up some input things we don't need anymore */
 	ReleaseTupleDesc(tup_desc);
