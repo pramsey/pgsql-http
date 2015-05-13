@@ -241,6 +241,8 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 		int32 tup_typmod, ncolumns;
 		TupleDesc tup_desc;
 		size_t tup_len;
+		Datum *values;
+		bool *nulls;
 
 		/* Skip null array items */
 		if ( isnull )
@@ -254,8 +256,8 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 		ncolumns = tup_desc->natts;
 
 		/* Prepare for values / nulls to hold the data */
-		Datum *values = (Datum *) palloc0(ncolumns * sizeof(Datum));
-		bool *nulls = (bool *) palloc0(ncolumns * sizeof(bool));
+		values = (Datum *) palloc0(ncolumns * sizeof(Datum));
+		nulls = (bool *) palloc0(ncolumns * sizeof(bool));
 
 		/* Build a temporary HeapTuple control structure */
 		HeapTupleData tuple;
