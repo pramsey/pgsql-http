@@ -237,6 +237,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 	while( array_iterate(iterator, &value, &isnull) )
 	{
 		HeapTupleHeader rec;
+		HeapTupleData tuple;
 		Oid tup_type;
 		int32 tup_typmod, ncolumns;
 		TupleDesc tup_desc;
@@ -260,7 +261,6 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 		nulls = (bool *) palloc0(ncolumns * sizeof(bool));
 
 		/* Build a temporary HeapTuple control structure */
-		HeapTupleData tuple;
 		tuple.t_len = tup_len;
 		ItemPointerSetInvalid(&(tuple.t_self));
 		tuple.t_tableOid = InvalidOid;
