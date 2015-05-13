@@ -228,92 +228,80 @@ string_info_remove_cr(StringInfo si)
 static struct curl_slist *
 header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 {
-	int nelems = ArrayGetNItems(ARR_NDIM(array), ARR_DIMS(array));
+	ArrayIterator iterator;
+	Datum value;
+	bool isnull;
 
-	if ( nelems > 0 )
+	iterator = array_create_iterator(array, 0);
+
+	while( array_iterate(iterator, &value, &isnull) )
 	{
-		bits8 *bitmap = ARR_NULLBITMAP(array);
-		int bitmask = 1;
-		int i;
-		size_t offset = 0;
+		HeapTupleHeader rec;
+		Oid tup_type;
+		int32 tup_typmod, ncolumns;
+		TupleDesc tup_desc;
+		size_t tup_len;
 
-		for ( i = 0; i < nelems; i++ )
+		/* Skip null array items */
+		if ( isnull )
+			continue;
+		
+		rec = DatumGetHeapTupleHeader(value);
+		tup_type = HeapTupleHeaderGetTypeId(rec);
+		tup_typmod = HeapTupleHeaderGetTypMod(rec);
+		tup_len = HeapTupleHeaderGetDatumLength(rec);
+		tup_desc = lookup_rowtype_tupdesc(tup_type, tup_typmod);
+		ncolumns = tup_desc->natts;
+
+		/* Prepare for values / nulls to hold the data */
+		Datum *values = (Datum *) palloc0(ncolumns * sizeof(Datum));
+		bool *nulls = (bool *) palloc0(ncolumns * sizeof(bool));
+
+		/* Build a temporary HeapTuple control structure */
+		HeapTupleData tuple;
+		tuple.t_len = tup_len;
+		ItemPointerSetInvalid(&(tuple.t_self));
+		tuple.t_tableOid = InvalidOid;
+		tuple.t_data = rec;
+
+		/* Break down the tuple into values/nulls lists */
+		heap_deform_tuple(&tuple, tup_desc, values, nulls);
+
+		/* Convert the data into a header */
+		/* TODO: Ensure the header list is unique? Or leave that to the */
+		/* server to deal with. */
+		if ( ! nulls[HEADER_FIELD] )
 		{
-			/* Only handle non-NULL entries */
-			/* PgSQL arrays have a complex null handling scheme */
-			if ((bitmap && (*bitmap & bitmask) != 0) || !bitmap)
+			char buffer[1024];
+			char *header_val;
+			char *header_fld = TextDatumGetCString(values[HEADER_FIELD]);
+
+			/* Don't process "content-type" in the optional headers */
+			if ( strlen(header_fld) <= 0 || strncasecmp(header_fld, "Content-Type", 12) == 0 )
 			{
-				/* Read metadata about the tuple */
-				HeapTupleHeader rec = DatumGetHeapTupleHeader(ARR_DATA_PTR(array)+offset);
-				Oid tup_type = HeapTupleHeaderGetTypeId(rec);
-				int32 tup_typmod = HeapTupleHeaderGetTypMod(rec);
-				TupleDesc tup_desc = lookup_rowtype_tupdesc(tup_type, tup_typmod);
-				int ncolumns = tup_desc->natts;
-				size_t tup_len = HeapTupleHeaderGetDatumLength(rec);
-
-				/* Prepare for values / nulls to hold the data */
-				Datum *values = (Datum *) palloc0(ncolumns * sizeof(Datum));
-				bool *nulls = (bool *) palloc0(ncolumns * sizeof(bool));
-
-				/* Build a temporary HeapTuple control structure */
-				HeapTupleData tuple;
-				tuple.t_len = tup_len;
-				ItemPointerSetInvalid(&(tuple.t_self));
-				tuple.t_tableOid = InvalidOid;
-				tuple.t_data = rec;
-
-				/* Break down the tuple into values/nulls lists */
-				heap_deform_tuple(&tuple, tup_desc, values, nulls);
-
-				/* Convert the data into a header */
-				/* TODO: Ensure the header list is unique? Or leave that to the */
-				/* server to deal with. */
-				if ( ! nulls[HEADER_FIELD] )
-				{
-					char buffer[1024];
-					char *header_val;
-					char *header_fld = TextDatumGetCString(values[HEADER_FIELD]);
-
-					/* Don't process "content-type" in the optional headers */
-					if ( strlen(header_fld) <= 0 || strncasecmp(header_fld, "Content-Type", 12) == 0 )
-					{
-						elog(NOTICE, "'Content-Type' is not supported as an optional header");
-						continue;
-					}
-
-					if ( nulls[HEADER_VALUE] )
-						header_val = pstrdup("");
-					else
-						header_val = TextDatumGetCString(values[HEADER_VALUE]);
-
-					snprintf(buffer, sizeof(buffer), "%s: %s", header_fld, header_val);
-					elog(DEBUG2, "pgsql-http: optional request header '%s'", buffer);
-					headers = curl_slist_append(headers, buffer);
-					pfree(header_fld);
-					pfree(header_val);
-				}
-
-				/* Advance the array read pointer */
-				offset += INTALIGN(tup_len);
-
-				/* Free all the temporary structures */
-				ReleaseTupleDesc(tup_desc);
-				pfree(values);
-				pfree(nulls);
+				elog(NOTICE, "'Content-Type' is not supported as an optional header");
+				continue;
 			}
 
-			/* Advance array NULL bitmap */
-			if (bitmap)
-			{
-				bitmask <<= 1;
-				if (bitmask == 0x100)
-				{
-					bitmap++;
-					bitmask = 1;
-				}
-			}
+			if ( nulls[HEADER_VALUE] )
+				header_val = pstrdup("");
+			else
+				header_val = TextDatumGetCString(values[HEADER_VALUE]);
+
+			snprintf(buffer, sizeof(buffer), "%s: %s", header_fld, header_val);
+			elog(DEBUG2, "pgsql-http: optional request header '%s'", buffer);
+			headers = curl_slist_append(headers, buffer);
+			pfree(header_fld);
+			pfree(header_val);
 		}
+
+		/* Free all the temporary structures */
+		ReleaseTupleDesc(tup_desc);
+		pfree(values);
+		pfree(nulls);
 	}
+	array_free_iterator(iterator);
+
 	return headers;
 }
 
