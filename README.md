@@ -145,6 +145,20 @@ The `headers` field for requests and response is a PostgreSQL array of type `htt
 
 As seen in the examples, you can easily unspool the array of `http_header` tuples into a result set using the PostgreSQL `unnest()` function on the array. From there you can easily select the particular header you are interested in.
 
+## Keep-Alive
+
+By default each request uses a fresh connection and assures that the connection is closed when the request is done.  This behavior reduces the chance of consuming system resources (sockets) as the extension runs over extended periods of time.
+
+High-performance applications may wish to enable keep-alive and connection persistence to reduce latency and enhance throughput.  The following GUC variable changes the behavior of the http extension to maintain connections as long as possible:
+
+    http.keepalive = 'on'
+
+## Timeouts
+
+By default a 5 second timeout is set for the completion of a request.  If a different timeout is desired the following GUC variable can be used to set it in milliseconds:
+
+    http.timeout_msec = 200
+
 ## Functions
 
 * `http_header(field VARCHAR, value VARCHAR)` returns `http_header`
