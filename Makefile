@@ -13,6 +13,10 @@ CFLAGS += $(shell $(CURL_CONFIG) --cflags)
 LIBS += $(shell $(CURL_CONFIG) --libs)
 SHLIB_LINK := $(LIBS)
 
+ifdef DEBUG
+COPT			+= -O0
+endif
+
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
