@@ -4,7 +4,7 @@ OBJS = http.o
 EXTENSION = http
 DATA = http--1.1.sql http--1.0--1.1.sql
 REGRESS = http
-EXTRA-CLEAN =
+EXTRA_CLEAN =
 
 CURL_CONFIG = curl-config
 PG_CONFIG = pg_config
