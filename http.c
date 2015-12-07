@@ -269,7 +269,11 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 	Datum value;
 	bool isnull;
 
+#if PG_VERSION_NUM >= 90500
+	iterator = array_create_iterator(array, 0, NULL);
+#else
 	iterator = array_create_iterator(array, 0);
+#endif
 
 	while( array_iterate(iterator, &value, &isnull) )
 	{
