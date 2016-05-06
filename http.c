@@ -103,6 +103,7 @@ static size_t http_readback(void *buffer, size_t size, size_t nitems, void *inst
 
 static bool g_use_keepalive;
 static int g_timeout_msec;
+static char* g_proxy;
 
 static CURL * g_http_handle = NULL;
 
@@ -132,6 +133,17 @@ void _PG_init(void)
 							NULL,
 							NULL,
 							NULL);
+	
+	DefineCustomStringVariable("http.proxy",
+ 				"use this proxy url for request",
+ 				"see documentation at https://curl.haxx.se/libcurl/c/CURLOPT_PROXY.html",
+				&g_proxy,
+				"",
+				PGC_USERSET,
+				GUC_NOT_IN_SAMPLE,
+				NULL,
+				NULL,
+				NULL);
 	
 	curl_global_init(CURL_GLOBAL_ALL);
 }
@@ -558,6 +570,9 @@ Datum http_request(PG_FUNCTION_ARGS)
 	initStringInfo(&si_headers);
 	CURL_SETOPT(g_http_handle, CURLOPT_WRITEDATA, (void*)(&si_data));
 	CURL_SETOPT(g_http_handle, CURLOPT_WRITEHEADER, (void*)(&si_headers));
+
+	/* Set up the proxy string */
+	CURL_SETOPT(g_http_handle, CURLOPT_PROXY, g_proxy);
 
 	/* Set up the HTTP timeout */
 	CURL_SETOPT(g_http_handle, CURLOPT_TIMEOUT_MS, g_timeout_msec);

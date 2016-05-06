@@ -159,6 +159,13 @@ By default a 5 second timeout is set for the completion of a request.  If a diff
 
     http.timeout_msec = 200
 
+## Proxy
+
+By default no proxy ( empty string ) is used. It is enabled by setting a proxy url:
+
+    http.proxy = 'http://username:password@192.168.0.1:80'
+
+
 ## Functions
 
 * `http_header(field VARCHAR, value VARCHAR)` returns `http_header`
