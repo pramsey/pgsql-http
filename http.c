@@ -791,13 +791,14 @@ Datum urlencode(PG_FUNCTION_ARGS)
 
 	for ( i = 0; i < txt_size; i++ )
 	{
+		unsigned char c = str_in[i];
 
 		/* Break on NULL */
-		if ( str_in[i] == '\0' )
+		if ( c == '\0' )
 			break;
 
 		/* Replace ' ' with '+' */
-		if ( str_in[i] == ' ' )
+		if ( c  == ' ' )
 		{
 			*ptr = '+';
 			ptr++;
@@ -805,7 +806,7 @@ Datum urlencode(PG_FUNCTION_ARGS)
 		}
 
 		/* Pass basic characters through */
-		if ( str_in[i] < 127 && chars_to_not_encode[(int)(str_in[i])] )
+		if ( (c < 127) && chars_to_not_encode[(int)(str_in[i])] )
 		{
 			*ptr = str_in[i];
 			ptr++;
@@ -813,7 +814,7 @@ Datum urlencode(PG_FUNCTION_ARGS)
 		}
 
 		/* Encode the remaining chars */
-		rv = snprintf(ptr, 4, "%%%02X", str_in[i]);
+		rv = snprintf(ptr, 4, "%%%02X", c);
 		if ( rv < 0 )
 			PG_RETURN_NULL();
 
