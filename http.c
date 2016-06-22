@@ -103,6 +103,7 @@ static size_t http_readback(void *buffer, size_t size, size_t nitems, void *inst
 
 static bool g_use_keepalive;
 static int g_timeout_msec;
+static int g_timeout_connection_msec;
 
 static CURL * g_http_handle = NULL;
 
@@ -125,6 +126,19 @@ void _PG_init(void)
 							NULL,
 							&g_timeout_msec,
 							5000,
+							0,
+							INT_MAX,
+							PGC_USERSET,
+							GUC_NOT_IN_SAMPLE | GUC_UNIT_MS,
+							NULL,
+							NULL,
+							NULL);
+
+	DefineCustomIntVariable("http.timeout_connection_msec",
+							"request connection timeout in milliseconds",
+							NULL,
+							&g_timeout_connection_msec,
+							2000,
 							0,
 							INT_MAX,
 							PGC_USERSET,
@@ -561,7 +575,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 	/* Set up the HTTP timeout */
 	CURL_SETOPT(g_http_handle, CURLOPT_TIMEOUT_MS, g_timeout_msec);
-	CURL_SETOPT(g_http_handle, CURLOPT_CONNECTTIMEOUT, 1);
+	CURL_SETOPT(g_http_handle, CURLOPT_CONNECTTIMEOUT_MS, g_timeout_connection_msec);
 
 	/* Set the HTTP content encoding to gzip */
 	/*curl_easy_setopt(g_http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING);*/
