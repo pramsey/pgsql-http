@@ -368,7 +368,7 @@ static TupleDesc typname_get_tupledesc(const char *extname, const char *typname)
 	foreach(l, fetch_search_path(true))
 	{
 		Oid typnamespace = lfirst_oid(l);
-	    Oid typoid = GetSysCacheOid2(TYPENAMENSP,
+		Oid typoid = GetSysCacheOid2(TYPENAMENSP,
 	                           PointerGetDatum(typname),
 	                           ObjectIdGetDatum(typnamespace));
 
