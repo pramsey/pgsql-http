@@ -43,6 +43,9 @@
 #include <funcapi.h>
 #include <access/htup.h>
 #include <catalog/namespace.h>
+#include <catalog/pg_type.h>
+#include <catalog/dependency.h>
+#include <commands/extension.h>
 #include <lib/stringinfo.h>
 #include <utils/array.h>
 #include <utils/builtins.h>
@@ -349,6 +352,41 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 }
 
 /**
+* Look up the tuple description for a extension-defined type,
+* avoiding the pitfalls of using relations that are not part
+* of the extension, but share the same name as the relation
+* of interest.
+*/
+static TupleDesc typname_get_tupledesc(const char *extname, const char *typname)
+{
+	Oid extoid = get_extension_oid(extname, true);
+	ListCell *l;
+
+	if ( ! OidIsValid(extoid) )
+		elog(ERROR, "could not lookup '%s' extension oid", extname);
+
+	foreach(l, fetch_search_path(true))
+	{
+		Oid typnamespace = lfirst_oid(l);
+	    Oid typoid = GetSysCacheOid2(TYPENAMENSP,
+	                           PointerGetDatum(typname),
+	                           ObjectIdGetDatum(typnamespace));
+
+		if ( OidIsValid(typoid) )
+		{
+			// Oid typ_oid = get_typ_typrelid(rel_oid);
+			Oid relextoid = getExtensionOfObject(TypeRelationId, typoid);
+			if ( relextoid == extoid )
+			{
+				return TypeGetTupleDesc(typoid, NIL);
+			}
+		}
+	}
+
+	elog(ERROR, "could not lookup '%s' tuple desc", typname);
+}
+
+/**
 * Convert a string of headers separated by newlines/CRs into an
 * array of http_header tuples.
 */
@@ -365,7 +403,7 @@ header_string_to_array(StringInfo si)
 	char elem_align;
 
 	/* Header handling */
-	TupleDesc header_tuple_desc;
+	TupleDesc header_tuple_desc = NULL;
 
 	/* Regex support */
 	const char *regex_pattern = "^([^ \t\r\n\v\f]+): ?([^ \t\r\n\v\f]+.*)$";
@@ -381,8 +419,8 @@ header_string_to_array(StringInfo si)
 	if ( reti )
 		elog(ERROR, "Unable to compile regex pattern '%s'", regex_pattern);
 
-	/* Prepare tuple building metadata */
-	header_tuple_desc = RelationNameGetTupleDesc("http_header");
+	/* Lookup the tuple defn */
+	header_tuple_desc = typname_get_tupledesc("http", "http_header");
 
 	/* Prepare array building metadata */
 	elem_type = header_tuple_desc->tdtypeid;		
