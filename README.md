@@ -143,7 +143,7 @@ The `headers` field for requests and response is a PostgreSQL array of type `htt
      field  | character varying | 
      value  | character varying | 
 
-As seen in the examples, you can easily unspool the array of `http_header` tuples into a result set using the PostgreSQL `unnest()` function on the array. From there you can easily select the particular header you are interested in.
+As seen in the examples, you can unspool the array of `http_header` tuples into a result set using the PostgreSQL `unnest()` function on the array. From there you select out the particular header you are interested in.
 
 ## Keep-Alive
 
