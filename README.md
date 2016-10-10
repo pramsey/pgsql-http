@@ -179,7 +179,7 @@ If you already installed version 1.0 and you just want to upgrade, then `ALTER E
 
 ### Windows
 
-Sorry, no story here yet.
+There is a build available at [postgresonline](http://www.postgresonline.com/journal/archives/371-http-extension.html), not maintained by me.
 
 ## Why This is a Bad Idea
 
