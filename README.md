@@ -112,6 +112,26 @@ To access binary content, you must coerce the content from the default `varchar`
     --------------+---------------+----------------
      image/gif    |         31958 | 31958
 
+To access only the header you can do a HEAD-Request. This will not follow redirections.
+
+    WITH 
+      http AS ( 
+        SELECT * FROM http_head('http://google.com') 
+      ), 
+      headers AS (
+        SELECT (unnest(headers)).* FROM http
+      ) 
+    SELECT 
+      http.status,
+      headers.value AS location
+    FROM http 
+      LEFT OUTER JOIN headers
+        ON (headers.field = 'Location');
+    
+     status |                         location                          
+    --------+-----------------------------------------------------------
+        302 | http://www.google.ch/?gfe_rd=cr&ei=ACESWLy_KuvI8zeghL64Ag
+
 ## Concepts
 
 Every HTTP call is a made up of an `http_request` and an `http_response`.
@@ -133,7 +153,7 @@ Every HTTP call is a made up of an `http_request` and an `http_response`.
      headers      | http_header[]     | 
      content      | character varying | 
 
-The utility functions, `http_get()`, `http_post()`, `http_put()`, and `http_delete()` are just wrappers around a master function, `http(http_request)` that returns `http_response`.
+The utility functions, `http_get()`, `http_post()`, `http_put()`, `http_delete()` and `http_head()` are just wrappers around a master function, `http(http_request)` that returns `http_response`.
 
 The `headers` field for requests and response is a PostgreSQL array of type `http_header` which is just a simple tuple.
 
@@ -167,6 +187,7 @@ By default a 5 second timeout is set for the completion of a request.  If a diff
 * `http_post(uri VARCHAR, content VARCHAR, content_type VARCHAR)` returns `http_response`
 * `http_put(uri VARCHAR, content VARCHAR, content_type VARCHAR)` returns `http_response`
 * `http_delete(uri VARCHAR)` returns `http_resonse`
+* `http_head(uri VARCHAR)` returns `http_resonse`
 * `urlencode(string VARCHAR)` returns `text`
 
 ## Installation
