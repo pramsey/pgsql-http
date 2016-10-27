@@ -112,21 +112,17 @@ To access binary content, you must coerce the content from the default `varchar`
     --------------+---------------+----------------
      image/gif    |         31958 | 31958
 
-To access only the header you can do a HEAD-Request. This will not follow redirections.
+To access only the headers you can do a HEAD-Request. This will not follow redirections.
 
-    WITH 
-      http AS ( 
-        SELECT * FROM http_head('http://google.com') 
-      ), 
-      headers AS (
-        SELECT (unnest(headers)).* FROM http
-      ) 
     SELECT 
-      http.status,
-      headers.value AS location
-    FROM http 
-      LEFT OUTER JOIN headers
-        ON (headers.field = 'Location');
+        http.status, 
+        headers.value AS location
+    FROM 
+        http_head('http://google.com') AS http
+        LEFT OUTER JOIN LATERAL (SELECT value  
+            FROM unnest(http.headers) 
+            WHERE field = 'Location') AS headers
+            ON true;
     
      status |                         location                          
     --------+-----------------------------------------------------------
