@@ -106,6 +106,7 @@ static size_t http_readback(void *buffer, size_t size, size_t nitems, void *inst
 
 static bool g_use_keepalive;
 static int g_timeout_msec;
+static char* g_cainfo;
 
 static CURL * g_http_handle = NULL;
 
@@ -135,6 +136,17 @@ void _PG_init(void)
 							NULL,
 							NULL,
 							NULL);
+	
+	DefineCustomStringVariable("http.cainfo",
+							 "Alternative Path to CABundle",
+							 "Corresponds to the CURLOPT_CAINFO variable in curl. Use to specify path of ca-bundle.crt",
+							 &g_cainfo,
+							 NULL,
+							 PGC_USERSET,
+							 GUC_NOT_IN_SAMPLE,
+							 NULL,
+							 NULL,
+							 NULL);
 	
 	curl_global_init(CURL_GLOBAL_ALL);
 }
@@ -607,6 +619,11 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Follow redirects, as many as 5 */
 	CURL_SETOPT(g_http_handle, CURLOPT_FOLLOWLOCATION, 1);
 	CURL_SETOPT(g_http_handle, CURLOPT_MAXREDIRS, 5);
+	
+	/* Set CABundle path if overriden by guc*/
+	if ( g_cainfo ){
+		CURL_SETOPT(g_http_handle, CURLOPT_CAINFO, g_cainfo);
+	}
 
 	if ( g_use_keepalive )
 	{
