@@ -165,10 +165,10 @@ By default for SSL connections, the default locations used by curl to find the C
 On some systems, there may not be a default or the default is not under user control.
 This setting allows you to overwrite the CURLOPT_CAINFO used by curl.
 
-	** Windows example**
+### Windows example
     SET http.cainfo = 'C:\SSL\Certs\ca-bundle.crt';
     
-    ** Nix example **
+### UNIX example
     SET http.cainfo = '/share/ssl/ca-bundle.crt';
 
 ## Functions
