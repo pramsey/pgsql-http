@@ -620,7 +620,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	CURL_SETOPT(g_http_handle, CURLOPT_FOLLOWLOCATION, 1);
 	CURL_SETOPT(g_http_handle, CURLOPT_MAXREDIRS, 5);
 	
-	/* Set CABundle path if overriden by guc*/
+	/* Set CABundle path if overridden by guc*/
 	if ( g_cainfo ){
 		CURL_SETOPT(g_http_handle, CURLOPT_CAINFO, g_cainfo);
 	}
