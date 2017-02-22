@@ -23,7 +23,18 @@ This extension is for that.
     ----------------------------------------------
      <html><body><h1>It works!</h1></body></html>
     (1 row)
-
+    
+    > SELECT content::json->>'field' FROM http((
+                'GET',
+                 'http://localhost/v1/products/list',
+                 ARRAY[http_header('Authorization','Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9')],
+                 NULL,
+                 NULL
+              )::http_request)
+                       content                    
+    ----------------------------------------------	      
+     my value field
+    (1 row)	   
 
     > SELECT status, content_type, content FROM http_get('http://localhost');
 
