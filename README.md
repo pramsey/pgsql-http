@@ -169,6 +169,18 @@ High-performance applications may wish to enable keep-alive and connection persi
 By default a 5 second timeout is set for the completion of a request.  If a different timeout is desired the following GUC variable can be used to set it in milliseconds:
 
     http.timeout_msec = 200
+    
+## CAInfo
+
+By default for SSL connections, the default locations used by curl to find the CA Bundle are searched.
+On some systems, there may not be a default or the default is not under user control.
+This setting allows you to overwrite the CURLOPT_CAINFO used by curl.
+
+### Windows example
+    SET http.cainfo = 'C:\SSL\Certs\ca-bundle.crt';
+    
+### UNIX example
+    SET http.cainfo = '/share/ssl/ca-bundle.crt';
 
 ## Functions
 
