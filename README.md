@@ -170,6 +170,12 @@ By default a 5 second timeout is set for the completion of a request.  If a diff
 
     http.timeout_msec = 200
 
+## Connection Timeout
+
+By default a 1 second connection timeout is set; which is the maximum time in seconds that you allow the connection to the server to take.  If a different timeout is desired the following GUC variable can be used to set it in milliseconds:
+
+    http.timeout_connection_msec = 200
+
 ## Functions
 
 * `http_header(field VARCHAR, value VARCHAR)` returns `http_header`
