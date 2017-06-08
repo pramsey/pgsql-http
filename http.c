@@ -70,7 +70,8 @@ typedef enum {
 	HTTP_GET,
 	HTTP_POST,
 	HTTP_DELETE,
-	HTTP_PUT
+	HTTP_PUT,
+	HTTP_HEAD
 } http_method;
 
 /* Components (and postitions) of the http_request tuple type */
@@ -213,6 +214,8 @@ request_type(const char *method)
 		return HTTP_PUT;
 	else if ( strcasecmp(method, "DELETE") == 0 )
 		return HTTP_DELETE;
+	else if ( strcasecmp(method, "HEAD") == 0 )
+		return HTTP_HEAD;
 	else
 		return HTTP_GET;
 }
@@ -604,10 +607,13 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Set the HTTP content encoding to gzip */
 	/*curl_easy_setopt(g_http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING);*/
 
-	/* Follow redirects, as many as 5 */
-	CURL_SETOPT(g_http_handle, CURLOPT_FOLLOWLOCATION, 1);
-	CURL_SETOPT(g_http_handle, CURLOPT_MAXREDIRS, 5);
-
+	if ( method != HTTP_HEAD )
+	{
+		/* Follow redirects, as many as 5 */
+		CURL_SETOPT(g_http_handle, CURLOPT_FOLLOWLOCATION, 1);
+		CURL_SETOPT(g_http_handle, CURLOPT_MAXREDIRS, 5);
+	}
+	
 	if ( g_use_keepalive )
 	{
 		/* Add a keep alive option to the headers to reuse network sockets */
@@ -677,6 +683,10 @@ Datum http_request(PG_FUNCTION_ARGS)
 	else if ( method == HTTP_DELETE )
 	{
 		CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, "DELETE");
+	}
+	else if ( method == HTTP_HEAD )
+	{
+		CURL_SETOPT(g_http_handle, CURLOPT_NOBODY, 1);
 	}
 
 	/* Set the headers */

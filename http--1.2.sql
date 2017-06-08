@@ -6,7 +6,8 @@ CHECK (
     VALUE ILIKE 'get' OR
     VALUE ILIKE 'post' OR
     VALUE ILIKE 'put' OR
-    VALUE ILIKE 'delete'
+    VALUE ILIKE 'delete' OR
+    VALUE ILIKE 'head'
 );
 
 CREATE DOMAIN content_type AS text
@@ -62,6 +63,11 @@ CREATE OR REPLACE FUNCTION http_put(uri VARCHAR, content VARCHAR, content_type V
 CREATE OR REPLACE FUNCTION http_delete(uri VARCHAR)
     RETURNS http_response
     AS $$ SELECT http(('DELETE', $1, NULL, NULL, NULL)::http_request) $$
+    LANGUAGE 'sql';
+    
+CREATE OR REPLACE FUNCTION http_head(uri VARCHAR)
+    RETURNS http_response
+    AS $$ SELECT http(('HEAD', $1, NULL, NULL, NULL)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION urlencode(string VARCHAR)
