@@ -113,6 +113,7 @@ typedef struct {
 /* CURLOPT values we allow user to set at run-time */
 /* Be careful adding these, as they can be a security risk */
 static http_curlopt settable_curlopts[] = {
+    { "CURLOPT_CAINFO", CURLOPT_CAINFO, CURLOPT_STRING, false },
 #if LIBCURL_VERSION_NUM >= 0x070e01 /* 7.14.1 */
     { "CURLOPT_PROXY", CURLOPT_PROXY, CURLOPT_STRING, false },
     { "CURLOPT_PROXYPORT", CURLOPT_PROXYPORT, CURLOPT_LONG, false },
@@ -128,10 +129,10 @@ static http_curlopt settable_curlopts[] = {
 #endif
 #if LIBCURL_VERSION_NUM >= 0x073400  /* 7.52.0 */
     { "CURLOPT_PRE_PROXY", CURLOPT_PRE_PROXY, CURLOPT_STRING, false },
+    { "CURLOPT_PROXY_CAINFO", CURLOPT_PROXY_TLSAUTH_USERNAME, CURLOPT_STRING, false },
     { "CURLOPT_PROXY_TLSAUTH_USERNAME", CURLOPT_PROXY_TLSAUTH_USERNAME, CURLOPT_STRING, false },
     { "CURLOPT_PROXY_TLSAUTH_PASSWORD", CURLOPT_PROXY_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
     { "CURLOPT_PROXY_TLSAUTH_TYPE", CURLOPT_PROXY_TLSAUTH_TYPE, CURLOPT_STRING, false },
-    { "CURLOPT_CAINFO", CURLOPT_CAINFO, CURLOPT_STRING, false },
 #endif
     { NULL, 0 } /* Array null terminator */
 };
@@ -778,7 +779,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	if ( method == HTTP_POST || method == HTTP_PUT )
 	{
 		text *content_text;
-		size_t content_size;
+		long content_size;
 		char *content_type;
 		char buffer[1024];
 
