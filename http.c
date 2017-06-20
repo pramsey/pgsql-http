@@ -30,6 +30,7 @@
 /* Constants */
 #define HTTP_VERSION "1.1"
 #define HTTP_ENCODING "gzip"
+#define CURL_MIN_VERSION 0x071400 /* 7.20.0 */
 
 /* System */
 #include <regex.h>
@@ -510,8 +511,7 @@ http_check_curl_version(const curl_version_info_data *version_info)
 	elog(DEBUG2, "pgsql-http: curl version number 0x%x", version_info->version_num);
 	elog(DEBUG2, "pgsql-http: ssl version %s", version_info->ssl_version);
 
-	/* 0x071400 == 7.20.0, each hex digit is for one version level (0xMMmmpp) */
-	if ( version_info->version_num < 0x071400 )
+	if ( version_info->version_num < CURL_MIN_VERSION )
 	{
 		elog(ERROR, "pgsql-http requires Curl version 0.7.20 or higher");
 	}    
