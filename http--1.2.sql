@@ -35,6 +35,16 @@ CREATE TYPE http_request AS (
     content VARCHAR
 );
 
+CREATE OR REPLACE FUNCTION http_set_curlopt (curlopt VARCHAR, value VARCHAR) 
+    RETURNS boolean
+    AS 'MODULE_PATHNAME', 'http_set_curlopt'
+    LANGUAGE 'c';
+
+CREATE OR REPLACE FUNCTION http_reset_curlopt () 
+    RETURNS boolean
+    AS 'MODULE_PATHNAME', 'http_reset_curlopt'
+    LANGUAGE 'c';
+
 CREATE OR REPLACE FUNCTION http_header (field VARCHAR, value VARCHAR) 
     RETURNS http_header
     AS $$ SELECT $1, $2 $$ 

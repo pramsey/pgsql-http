@@ -30,6 +30,7 @@
 /* Constants */
 #define HTTP_VERSION "1.1"
 #define HTTP_ENCODING "gzip"
+#define CURL_MIN_VERSION 0x071400 /* 7.20.0 */
 
 /* System */
 #include <regex.h>
@@ -97,6 +98,45 @@ enum {
 	HEADER_VALUE = 1
 } http_header_type;
 
+typedef enum {
+    CURLOPT_STRING, 
+    CURLOPT_LONG
+} http_curlopt_type;
+
+/* CURLOPT string/enum value mapping */
+typedef struct {
+    char *curlopt_str;
+    CURLoption curlopt;
+    http_curlopt_type curlopt_type;
+    bool superuser_only;
+} http_curlopt;
+
+/* CURLOPT values we allow user to set at run-time */
+/* Be careful adding these, as they can be a security risk */
+static http_curlopt settable_curlopts[] = {
+    { "CURLOPT_CAINFO", CURLOPT_CAINFO, CURLOPT_STRING, false },
+#if LIBCURL_VERSION_NUM >= 0x070e01 /* 7.14.1 */
+    { "CURLOPT_PROXY", CURLOPT_PROXY, CURLOPT_STRING, false },
+    { "CURLOPT_PROXYPORT", CURLOPT_PROXYPORT, CURLOPT_LONG, false },
+#endif
+#if LIBCURL_VERSION_NUM >= 0x071301 /* 7.19.1 */
+    { "CURLOPT_PROXYUSERNAME", CURLOPT_PROXYUSERNAME, CURLOPT_STRING, false },
+    { "CURLOPT_PROXYPASSWORD", CURLOPT_PROXYPASSWORD, CURLOPT_STRING, false },
+#endif
+#if LIBCURL_VERSION_NUM >= 0x071504 /* 7.21.4 */
+    { "CURLOPT_TLSAUTH_USERNAME", CURLOPT_TLSAUTH_USERNAME, CURLOPT_STRING, false },
+    { "CURLOPT_TLSAUTH_PASSWORD", CURLOPT_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
+    { "CURLOPT_TLSAUTH_TYPE", CURLOPT_TLSAUTH_TYPE, CURLOPT_STRING, false },
+#endif
+#if LIBCURL_VERSION_NUM >= 0x073400  /* 7.52.0 */
+    { "CURLOPT_PRE_PROXY", CURLOPT_PRE_PROXY, CURLOPT_STRING, false },
+    { "CURLOPT_PROXY_CAINFO", CURLOPT_PROXY_TLSAUTH_USERNAME, CURLOPT_STRING, false },
+    { "CURLOPT_PROXY_TLSAUTH_USERNAME", CURLOPT_PROXY_TLSAUTH_USERNAME, CURLOPT_STRING, false },
+    { "CURLOPT_PROXY_TLSAUTH_PASSWORD", CURLOPT_PROXY_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
+    { "CURLOPT_PROXY_TLSAUTH_TYPE", CURLOPT_PROXY_TLSAUTH_TYPE, CURLOPT_STRING, false },
+#endif
+    { NULL, 0 } /* Array null terminator */
+};
 
 
 /* Function signatures */
@@ -181,7 +221,7 @@ http_readback(void *buffer, size_t size, size_t nitems, void *instream)
 }
 
 static void
-http_error(CURLcode err, char *error_buffer) 
+http_error(CURLcode err, const char *error_buffer) 
 {
 	if ( strlen(error_buffer) > 0 )
 		ereport(ERROR, (errmsg("%s", error_buffer)));
@@ -463,6 +503,122 @@ header_string_to_array(StringInfo si)
 	return construct_array(arr_elems, arr_nelems, elem_type, elem_len, elem_byval, elem_align);
 }
 
+/* Check/log version info */
+static void 
+http_check_curl_version(const curl_version_info_data *version_info) 
+{
+	elog(DEBUG2, "pgsql-http: curl version %s", version_info->version);
+	elog(DEBUG2, "pgsql-http: curl version number 0x%x", version_info->version_num);
+	elog(DEBUG2, "pgsql-http: ssl version %s", version_info->ssl_version);
+
+	if ( version_info->version_num < CURL_MIN_VERSION )
+	{
+		elog(ERROR, "pgsql-http requires Curl version 0.7.20 or higher");
+	}    
+}
+
+/* Check/create the global CURL* handle */
+static CURL*
+http_get_handle() 
+{
+    CURL *handle = g_http_handle;
+
+	/* Initialize the global handle if needed */
+	if (!handle)
+		handle = curl_easy_init();
+
+	if (!handle)
+		ereport(ERROR, (errmsg("Unable to initialize CURL")));
+    
+    g_http_handle = handle;
+    return handle;
+}
+
+
+/**
+* User-defined Curl option reset.
+*/
+Datum http_reset_curlopt(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(http_reset_curlopt);
+Datum http_reset_curlopt(PG_FUNCTION_ARGS)
+{
+    /* Set up global HTTP handle */
+    g_http_handle = http_get_handle();
+    curl_easy_reset(g_http_handle);
+    PG_RETURN_BOOL(true);
+}
+
+/**
+* User-defined Curl option handling.
+*/
+Datum http_set_curlopt(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(http_set_curlopt);
+Datum http_set_curlopt(PG_FUNCTION_ARGS)
+{
+    int i = 0;
+    char *curlopt, *value;
+    text *curlopt_txt, *value_txt;
+    
+	/* Version check */
+    http_check_curl_version(curl_version_info(CURLVERSION_NOW));
+
+	/* We cannot handle null arguments */
+	if ( PG_ARGISNULL(0) || PG_ARGISNULL(1) )
+		PG_RETURN_BOOL(false);
+
+    /* Set up global HTTP handle */
+    g_http_handle = http_get_handle();
+    
+    /* Read arguments */
+    curlopt_txt = PG_GETARG_TEXT_P(0);
+    value_txt = PG_GETARG_TEXT_P(1);
+    curlopt = text_to_cstring(curlopt_txt);
+    value = text_to_cstring(value_txt);
+    
+    while (1) 
+    {
+        http_curlopt opt = settable_curlopts[i++];
+        if (!opt.curlopt_str) /* Terminate at end of array */
+            break;
+        if (strcasecmp(opt.curlopt_str, curlopt) == 0)
+        {
+        	CURLcode err;
+        	char http_error_buffer[CURL_ERROR_SIZE];
+
+            /* Argument is a string */
+            if (opt.curlopt_type == CURLOPT_STRING)
+            {
+            	err = curl_easy_setopt(g_http_handle, opt.curlopt, value);
+                elog(DEBUG2, "set '%s' to value '%s', return value = %d", opt.curlopt_str, value, err);
+            }
+            /* Argument is a long */
+            else if (opt.curlopt_type == CURLOPT_LONG)
+            {
+                long value_long = strtol(value, NULL, 10);
+                if ( errno == EINVAL || errno == ERANGE ) 
+                    elog(ERROR, "invalid integer provided for '%s'", opt.curlopt_str);
+
+            	err = curl_easy_setopt(g_http_handle, opt.curlopt, value_long);
+                elog(DEBUG2, "set '%s' to value '%ld', return value = %d", opt.curlopt_str, value_long, err);
+            }
+            else
+            {
+        		elog(ERROR, "invalid curlopt_type");
+            }
+
+        	if ( err != CURLE_OK ) 
+        	{ 
+        		http_error(err, http_error_buffer);
+        		PG_RETURN_BOOL(false);
+        	}
+            PG_RETURN_BOOL(true);
+        }
+    }
+    elog(ERROR, "curl option '%s' is not available for run-time configuration", curlopt);
+    PG_RETURN_BOOL(false);
+}
+
+
 /**
 * Master HTTP request function, takes in an http_request tuple and outputs
 * an http_response tuple.
@@ -501,20 +657,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Output */
 	HeapTuple tuple_out;
 
-
 	/* Version check */
-	curl_version_info_data *version_info = curl_version_info(CURLVERSION_NOW);
-	elog(DEBUG2, "pgsql-http: curl version %s", version_info->version);
-	elog(DEBUG2, "pgsql-http: curl version number 0x%x", version_info->version_num);
-	elog(DEBUG2, "pgsql-http: ssl version %s", version_info->ssl_version);
-
-	/* 0x071400 == 7.20.0, each hex digit is for one version level (0xMMmmpp) */
-	if ( version_info->version_num < 0x071400 )
-	{
-		elog(ERROR, "pgsql-http requires Curl version 0.7.20 or higher");
-		PG_RETURN_NULL();
-	}
-
+    http_check_curl_version(curl_version_info(CURLVERSION_NOW));
 
 	/* We cannot handle a null request */
 	if ( ! PG_ARGISNULL(0) )
@@ -564,12 +708,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 	elog(DEBUG2, "pgsql-http: method '%s'", method_str);
 	pfree(method_str);
 
-	/* Initialize the global handle if needed */
-	if (!g_http_handle)
-		g_http_handle = curl_easy_init();
-
-	if ( !g_http_handle )
-		ereport(ERROR, (errmsg("Unable to initialize CURL")));
+    /* Set up global HTTP handle */
+    g_http_handle = http_get_handle();
 
 	/* Set the target URL */
 	CURL_SETOPT(g_http_handle, CURLOPT_URL, uri);
@@ -639,7 +779,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	if ( method == HTTP_POST || method == HTTP_PUT )
 	{
 		text *content_text;
-		size_t content_size;
+		long content_size;
 		char *content_type;
 		char buffer[1024];
 
