@@ -12,3 +12,13 @@ CREATE OR REPLACE FUNCTION http_head(uri VARCHAR)
     RETURNS http_response
     AS $$ SELECT http(('HEAD', $1, NULL, NULL, NULL)::http_request) $$
     LANGUAGE 'sql';
+
+CREATE OR REPLACE FUNCTION http_set_curlopt (curlopt VARCHAR, value VARCHAR) 
+    RETURNS boolean
+    AS 'MODULE_PATHNAME', 'http_set_curlopt'
+    LANGUAGE 'c';
+
+CREATE OR REPLACE FUNCTION http_reset_curlopt () 
+    RETURNS boolean
+    AS 'MODULE_PATHNAME', 'http_reset_curlopt'
+    LANGUAGE 'c';
