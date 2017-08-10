@@ -115,6 +115,8 @@ typedef struct {
 /* Be careful adding these, as they can be a security risk */
 static http_curlopt settable_curlopts[] = {
     { "CURLOPT_CAINFO", CURLOPT_CAINFO, CURLOPT_STRING, false },
+    { "CURLOPT_TIMEOUT", CURLOPT_TIMEOUT, CURLOPT_LONG, false },
+    { "CURLOPT_TIMEOUT_MS", CURLOPT_TIMEOUT_MS, CURLOPT_LONG, false },
 #if LIBCURL_VERSION_NUM >= 0x070e01 /* 7.14.1 */
     { "CURLOPT_PROXY", CURLOPT_PROXY, CURLOPT_STRING, false },
     { "CURLOPT_PROXYPORT", CURLOPT_PROXYPORT, CURLOPT_LONG, false },
@@ -128,6 +130,10 @@ static http_curlopt settable_curlopts[] = {
     { "CURLOPT_TLSAUTH_PASSWORD", CURLOPT_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
     { "CURLOPT_TLSAUTH_TYPE", CURLOPT_TLSAUTH_TYPE, CURLOPT_STRING, false },
 #endif
+#if LIBCURL_VERSION_NUM >= 0x071900 /* 7.25.0 */
+    { "CURLOPT_TCP_KEEPALIVE", CURLOPT_TCP_KEEPALIVE, CURLOPT_LONG, false },
+    { "CURLOPT_TCP_KEEPIDLE", CURLOPT_TCP_KEEPIDLE, CURLOPT_LONG, false },
+#endif
 #if LIBCURL_VERSION_NUM >= 0x073400  /* 7.52.0 */
     { "CURLOPT_PRE_PROXY", CURLOPT_PRE_PROXY, CURLOPT_STRING, false },
     { "CURLOPT_PROXY_CAINFO", CURLOPT_PROXY_TLSAUTH_USERNAME, CURLOPT_STRING, false },
@@ -135,7 +141,7 @@ static http_curlopt settable_curlopts[] = {
     { "CURLOPT_PROXY_TLSAUTH_PASSWORD", CURLOPT_PROXY_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
     { "CURLOPT_PROXY_TLSAUTH_TYPE", CURLOPT_PROXY_TLSAUTH_TYPE, CURLOPT_STRING, false },
 #endif
-    { NULL, 0 } /* Array null terminator */
+    { NULL, 0, 0, false } /* Array null terminator */
 };
 
 
