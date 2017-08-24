@@ -117,6 +117,7 @@ static http_curlopt settable_curlopts[] = {
     { "CURLOPT_CAINFO", CURLOPT_CAINFO, CURLOPT_STRING, false },
     { "CURLOPT_TIMEOUT", CURLOPT_TIMEOUT, CURLOPT_LONG, false },
     { "CURLOPT_TIMEOUT_MS", CURLOPT_TIMEOUT_MS, CURLOPT_LONG, false },
+    { "CURLOPT_CONNECTTIMEOUT", CURLOPT_CONNECTTIMEOUT, CURLOPT_LONG, false },
 #if LIBCURL_VERSION_NUM >= 0x070e01 /* 7.14.1 */
     { "CURLOPT_PROXY", CURLOPT_PROXY, CURLOPT_STRING, false },
     { "CURLOPT_PROXYPORT", CURLOPT_PROXYPORT, CURLOPT_LONG, false },
@@ -535,6 +536,10 @@ http_get_handle()
 
 	if (!handle)
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
+
+    /* Always want a default fast (1 second) connection timeout */
+    /* User can over-ride with http_set_curlopt() if they wish */
+    curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
     
     g_http_handle = handle;
     return handle;
@@ -748,7 +753,6 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 	/* Set up the HTTP timeout */
 	CURL_SETOPT(g_http_handle, CURLOPT_TIMEOUT_MS, g_timeout_msec);
-	CURL_SETOPT(g_http_handle, CURLOPT_CONNECTTIMEOUT, 1);
 
 	/* Set the HTTP content encoding to gzip */
 	/*curl_easy_setopt(g_http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING);*/
