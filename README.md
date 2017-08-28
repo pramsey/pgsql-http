@@ -222,8 +222,8 @@ Will set the proxy port option for the lifetime of the database connection. You 
 * `http_get(uri VARCHAR)` returns `http_response`
 * `http_post(uri VARCHAR, content VARCHAR, content_type VARCHAR)` returns `http_response`
 * `http_put(uri VARCHAR, content VARCHAR, content_type VARCHAR)` returns `http_response`
-* `http_delete(uri VARCHAR)` returns `http_resonse`
-* `http_head(uri VARCHAR)` returns `http_resonse`
+* `http_delete(uri VARCHAR)` returns `http_response`
+* `http_head(uri VARCHAR)` returns `http_response`
 * `http_set_curlopt(curlopt VARCHAR, value varchar) returns `boolean`
 * `http_reset_curlopt() returns `boolean`
 * `urlencode(string VARCHAR)` returns `text`
