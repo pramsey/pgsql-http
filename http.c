@@ -104,7 +104,7 @@ enum {
 } http_header_type;
 
 typedef enum {
-    CURLOPT_STRING, 
+    CURLOPT_STRING,
     CURLOPT_LONG
 } http_curlopt_type;
 
@@ -233,7 +233,7 @@ http_readback(void *buffer, size_t size, size_t nitems, void *instream)
 }
 
 static void
-http_error(CURLcode err, const char *error_buffer) 
+http_error(CURLcode err, const char *error_buffer)
 {
 	if ( strlen(error_buffer) > 0 )
 		ereport(ERROR, (errmsg("%s", error_buffer)));
@@ -516,8 +516,8 @@ header_string_to_array(StringInfo si)
 }
 
 /* Check/log version info */
-static void 
-http_check_curl_version(const curl_version_info_data *version_info) 
+static void
+http_check_curl_version(const curl_version_info_data *version_info)
 {
 	elog(DEBUG2, "pgsql-http: curl version %s", version_info->version);
 	elog(DEBUG2, "pgsql-http: curl version number 0x%x", version_info->version_num);
@@ -526,12 +526,12 @@ http_check_curl_version(const curl_version_info_data *version_info)
 	if ( version_info->version_num < CURL_MIN_VERSION )
 	{
 		elog(ERROR, "pgsql-http requires Curl version 0.7.20 or higher");
-	}    
+	}
 }
 
 /* Check/create the global CURL* handle */
 static CURL*
-http_get_handle() 
+http_get_handle()
 {
     CURL *handle = g_http_handle;
 
@@ -545,7 +545,7 @@ http_get_handle()
     /* Always want a default fast (1 second) connection timeout */
     /* User can over-ride with http_set_curlopt() if they wish */
     curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
-    
+
     g_http_handle = handle;
     return handle;
 }
@@ -574,7 +574,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
     int i = 0;
     char *curlopt, *value;
     text *curlopt_txt, *value_txt;
-    
+
 	/* Version check */
     http_check_curl_version(curl_version_info(CURLVERSION_NOW));
 
@@ -584,14 +584,14 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 
     /* Set up global HTTP handle */
     g_http_handle = http_get_handle();
-    
+
     /* Read arguments */
     curlopt_txt = PG_GETARG_TEXT_P(0);
     value_txt = PG_GETARG_TEXT_P(1);
     curlopt = text_to_cstring(curlopt_txt);
     value = text_to_cstring(value_txt);
-    
-    while (1) 
+
+    while (1)
     {
         http_curlopt opt = settable_curlopts[i++];
         if (!opt.curlopt_str) /* Terminate at end of array */
@@ -611,7 +611,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
             else if (opt.curlopt_type == CURLOPT_LONG)
             {
                 long value_long = strtol(value, NULL, 10);
-                if ( errno == EINVAL || errno == ERANGE ) 
+                if ( errno == EINVAL || errno == ERANGE )
                     elog(ERROR, "invalid integer provided for '%s'", opt.curlopt_str);
 
             	err = curl_easy_setopt(g_http_handle, opt.curlopt, value_long);
@@ -622,8 +622,8 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
         		elog(ERROR, "invalid curlopt_type");
             }
 
-        	if ( err != CURLE_OK ) 
-        	{ 
+        	if ( err != CURLE_OK )
+        	{
         		http_error(err, http_error_buffer);
         		PG_RETURN_BOOL(false);
         	}
