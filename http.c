@@ -48,12 +48,17 @@
 #include <catalog/dependency.h>
 #include <commands/extension.h>
 #include <lib/stringinfo.h>
+#include <mb/pg_wchar.h>
 #include <utils/array.h>
 #include <utils/builtins.h>
 #include <utils/lsyscache.h>
 #include <utils/syscache.h>
 #include <utils/typcache.h>
-#include "utils/guc.h"
+#include <utils/guc.h>
+
+#if PG_VERSION_NUM >= 100000
+#include <utils/varlena.h>
+#endif
 
 #if PG_VERSION_NUM >= 90300
 #include <access/htup_details.h>
@@ -664,6 +669,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	int http_return;
 	long status;
 	char *content_type = NULL;
+	int content_charset = 0;
 
 	/* Output */
 	HeapTuple tuple_out;
@@ -887,8 +893,31 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Content type */
 	if ( content_type )
 	{
+		List *ctl;
+		ListCell *lc;
+
 		values[RESP_CONTENT_TYPE] = CStringGetTextDatum(content_type);
 		nulls[RESP_CONTENT_TYPE] = false;
+
+		/* Read the character set name out of the content type */
+		/* if there is one in there */
+		/* text/html; charset=iso-8859-1 */
+		if ( SplitIdentifierString(pstrdup(content_type), ';', &ctl) )
+		{
+			foreach(lc, ctl)
+			{
+				/* charset=iso-8859-1 */
+				const char *param = (const char *) lfirst(lc);
+				const char *paramtype = "charset=";
+				if ( strcasestr(param, paramtype) )
+				{
+					/* iso-8859-1 */
+					const char *charset = param + strlen(paramtype);
+					content_charset = pg_char_to_encoding(charset);
+					break;
+				}
+			}
+		}
 	}
 	else
 	{
@@ -914,7 +943,22 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Content */
 	if ( si_data.len )
 	{
-		values[RESP_CONTENT] = PointerGetDatum(cstring_to_text_with_len(si_data.data, si_data.len));
+		char *content_str;
+		size_t content_len;
+
+		/* Apply character transcoding if necessary */
+		if ( content_charset )
+		{
+			content_str = pg_any_to_server(si_data.data, si_data.len, content_charset);
+			content_len = strlen(content_str);
+		}
+		else
+		{
+			content_str = si_data.data;
+			content_len = si_data.len;
+		}
+
+		values[RESP_CONTENT] = PointerGetDatum(cstring_to_text_with_len(content_str, content_len));
 		nulls[RESP_CONTENT] = false;
 	}
 	else
