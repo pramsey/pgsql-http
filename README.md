@@ -172,19 +172,18 @@ The `headers` field for requests and response is a PostgreSQL array of type `htt
 
 As seen in the examples, you can unspool the array of `http_header` tuples into a result set using the PostgreSQL `unnest()` function on the array. From there you select out the particular header you are interested in.
 
-## Keep-Alive
+## Functions
 
-By default each request uses a fresh connection and assures that the connection is closed when the request is done.  This behavior reduces the chance of consuming system resources (sockets) as the extension runs over extended periods of time.
-
-High-performance applications may wish to enable keep-alive and connection persistence to reduce latency and enhance throughput.  The following GUC variable changes the behavior of the http extension to maintain connections as long as possible:
-
-    http.keepalive = 'on'
-
-## Timeouts
-
-By default a 5 second timeout is set for the completion of a request.  If a different timeout is desired the following GUC variable can be used to set it in milliseconds:
-
-    http.timeout_msec = 200
+* `http_header(field VARCHAR, value VARCHAR)` returns `http_header`
+* `http(request http_request)` returns `http_response`
+* `http_get(uri VARCHAR)` returns `http_response`
+* `http_post(uri VARCHAR, content VARCHAR, content_type VARCHAR)` returns `http_response`
+* `http_put(uri VARCHAR, content VARCHAR, content_type VARCHAR)` returns `http_response`
+* `http_delete(uri VARCHAR)` returns `http_response`
+* `http_head(uri VARCHAR)` returns `http_response`
+* `http_set_curlopt(curlopt VARCHAR, value varchar) returns `boolean`
+* `http_reset_curlopt() returns `boolean`
+* `urlencode(string VARCHAR)` returns `text`
 
 ## CURL Options
 
@@ -215,19 +214,20 @@ For example,
     
 Will set the proxy port option for the lifetime of the database connection. You can reset all CURL options to their defaults using the `http_reset_curlopt()` function.
 
-## Functions
+## Keep-Alive & Timeouts
 
-* `http_header(field VARCHAR, value VARCHAR)` returns `http_header`
-* `http(request http_request)` returns `http_response`
-* `http_get(uri VARCHAR)` returns `http_response`
-* `http_post(uri VARCHAR, content VARCHAR, content_type VARCHAR)` returns `http_response`
-* `http_put(uri VARCHAR, content VARCHAR, content_type VARCHAR)` returns `http_response`
-* `http_delete(uri VARCHAR)` returns `http_response`
-* `http_head(uri VARCHAR)` returns `http_response`
-* `http_set_curlopt(curlopt VARCHAR, value varchar) returns `boolean`
-* `http_reset_curlopt() returns `boolean`
-* `urlencode(string VARCHAR)` returns `text`
+*The `http_reset_curlopt()` above is recommended. The global variables below will be deprecated and removed over time.*
 
+By default each request uses a fresh connection and assures that the connection is closed when the request is done.  This behavior reduces the chance of consuming system resources (sockets) as the extension runs over extended periods of time.
+
+High-performance applications may wish to enable keep-alive and connection persistence to reduce latency and enhance throughput.  The following GUC variable changes the behavior of the http extension to maintain connections as long as possible:
+
+    http.keepalive = 'on'
+
+By default a 5 second timeout is set for the completion of a request.  If a different timeout is desired the following GUC variable can be used to set it in milliseconds:
+
+    http.timeout_msec = 200    
+    
 ## Installation
 
 ### UNIX
