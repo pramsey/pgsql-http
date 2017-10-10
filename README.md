@@ -216,7 +216,7 @@ Will set the proxy port option for the lifetime of the database connection. You 
 
 ## Keep-Alive & Timeouts
 
-*The `http_reset_curlopt()` above is recommended. The global variables below will be deprecated and removed over time.*
+*The `http_reset_curlopt()` approach described above is recommended. The global variables below will be deprecated and removed over time.*
 
 By default each request uses a fresh connection and assures that the connection is closed when the request is done.  This behavior reduces the chance of consuming system resources (sockets) as the extension runs over extended periods of time.
 
