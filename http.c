@@ -299,6 +299,33 @@ header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
 }
 
 /**
+* Our own implementation of strcasestr.
+*/
+static char *http_strcasestr(const char *s, const char *find)
+{
+	char c, sc;
+	size_t len;
+
+	if ((c = *find++) != 0)
+	{
+		c = tolower((unsigned char)c);
+		len = strlen(find);
+		do
+		{
+			do
+			{
+				if ((sc = *s++) == 0)
+				return (NULL);
+			}
+			while ((char)tolower((unsigned char)sc) != c);
+		}
+		while (strncasecmp(s, find, len) != 0);
+		s--;
+	}
+	return ((char *)s);
+}
+
+/**
 * Quick and dirty, remove all \r from a StringInfo.
 */
 static void
@@ -909,7 +936,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 				/* charset=iso-8859-1 */
 				const char *param = (const char *) lfirst(lc);
 				const char *paramtype = "charset=";
-				if ( strcasestr(param, paramtype) )
+				if ( http_strcasestr(param, paramtype) )
 				{
 					/* iso-8859-1 */
 					const char *charset = param + strlen(paramtype);
