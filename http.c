@@ -974,15 +974,15 @@ Datum http_request(PG_FUNCTION_ARGS)
 		size_t content_len;
 
 		/* Apply character transcoding if necessary */
-		if ( content_charset )
-		{
-			content_str = pg_any_to_server(si_data.data, si_data.len, content_charset);
-			content_len = strlen(content_str);
-		}
-		else
+		if ( content_charset < 0 )
 		{
 			content_str = si_data.data;
 			content_len = si_data.len;
+		}
+		else
+		{
+			content_str = pg_any_to_server(si_data.data, si_data.len, content_charset);
+			content_len = strlen(content_str);
 		}
 
 		values[RESP_CONTENT] = PointerGetDatum(cstring_to_text_with_len(content_str, content_len));
