@@ -564,14 +564,15 @@ http_get_handle()
 
 	/* Initialize the global handle if needed */
 	if (!handle)
+	{
 		handle = curl_easy_init();
+		/* Always want a default fast (1 second) connection timeout */
+		/* User can over-ride with http_set_curlopt() if they wish */
+		curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
+	}
 
 	if (!handle)
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
-
-	/* Always want a default fast (1 second) connection timeout */
-	/* User can over-ride with http_set_curlopt() if they wish */
-	curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
 
 	g_http_handle = handle;
 	return handle;
