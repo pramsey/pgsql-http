@@ -1,17 +1,18 @@
 # PostgreSQL HTTP Client
 
+![Build Status](https://api.travis-ci.org/pramsey/pgsql-http.svg?branch=master)
 
 ## Motivation
 
 Wouldn't it be nice to be able to write a trigger that called a web service? Either to get back a result, or to poke that service into refreshing itself against the new state of the database?
 
-This extension is for that. 
+This extension is for that.
 
 ## Examples
 
     > SELECT urlencode('my special string''s & things?');
 
-                  urlencode              
+                  urlencode
     -------------------------------------
      my+special+string%27s+%26+things%3F
     (1 row)
@@ -19,11 +20,11 @@ This extension is for that.
 
     > SELECT content FROM http_get('http://localhost');
 
-                       content                    
+                       content
     ----------------------------------------------
      <html><body><h1>It works!</h1></body></html>
     (1 row)
-    
+
     > SELECT content::json->>'field' FROM http((
                 'GET',
                  'http://localhost/v1/products/list',
@@ -31,22 +32,22 @@ This extension is for that.
                  NULL,
                  NULL
               )::http_request)
-                       content                    
-    ----------------------------------------------	      
+                       content
+    ----------------------------------------------
      my value field
-    (1 row)	   
+    (1 row)
 
     > SELECT status, content_type, content FROM http_get('http://localhost');
 
-     status | content_type |                   content                    
+     status | content_type |                   content
     --------+--------------+----------------------------------------------
         200 | text/html    | <html><body><h1>It works!</h1></body></html>
     (1 row)
 
-  
+
     > SELECT (unnest(headers)).* FROM http_get('http://localhost');
 
-          field       |                                value                                 
+          field       |                                value
     ------------------+----------------------------------------------------------------------
      Date             | Wed, 17 Dec 2014 21:47:27 GMT
      Server           | Apache/2.2.26 (Unix) DAV/2 PHP/5.4.30 mod_ssl/2.2.26 OpenSSL/0.9.8za
@@ -61,10 +62,10 @@ This extension is for that.
      Content-Type     | text/html
      Content-Language | en
 
-	  
+
     > SELECT status,content FROM http_put('http://localhost/resource', 'some text', 'text/plain');
-    
-     status |                                content                                
+
+     status |                                content
     --------+-----------------------------------------------------------------------
         405 | <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">                   +
             | <html><head>                                                         +
@@ -73,11 +74,11 @@ This extension is for that.
             | <h1>Method Not Allowed</h1>                                          +
             | <p>The requested method PUT is not allowed for the URL /resource.</p>+
             | </body></html>                                                       +
-            | 
+            |
 
     > SELECT status, content FROM http_delete('http://localhost');
 
-     status |                                    content                                    
+     status |                                    content
     --------+-------------------------------------------------------------------------------
         405 | <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">                           +
             | <html><head>                                                                 +
@@ -86,56 +87,56 @@ This extension is for that.
             | <h1>Method Not Allowed</h1>                                                  +
             | <p>The requested method DELETE is not allowed for the URL /index.html.en.</p>+
             | </body></html>                                                               +
-            | 
+            |
 
 To POST to a URL using a data payload instead of parameters embedded in the URL, use the `application/x-www-form-urlencoded` content type.
 
-    SELECT status, content 
+    SELECT status, content
       FROM http_post('http://localhost/myform',
                      'myvar=myval&foo=bar',
                      'application/x-www-form-urlencoded);
 
 
-Remember to [URL encode](http://en.wikipedia.org/wiki/Percent-encoding) content that includes any "special" characters (really, anything other than a-z and 0-9). 
+Remember to [URL encode](http://en.wikipedia.org/wiki/Percent-encoding) content that includes any "special" characters (really, anything other than a-z and 0-9).
 
-    SELECT status, content 
+    SELECT status, content
       FROM http_post('http://localhost/myform',
                      'myvar=' || urlencode('my special string & things?'),
                      'application/x-www-form-urlencoded);
 
 To access binary content, you must coerce the content from the default `varchar` representation to a `bytea` representation using the `textsend` function. Using the default `varchar::bytea` cast will not work, as the cast will stop the first time it hits a zero-valued byte (common in binary data).
 
-    WITH 
-      http AS ( 
-        SELECT * FROM http_get('http://localhost/PoweredByMacOSXLarge.gif') 
-      ), 
+    WITH
+      http AS (
+        SELECT * FROM http_get('http://localhost/PoweredByMacOSXLarge.gif')
+      ),
       headers AS (
         SELECT (unnest(headers)).* FROM http
-      ) 
-    SELECT 
+      )
+    SELECT
       http.content_type,
-      length(textsend(http.content)) AS length_binary, 
-      headers.value AS length_headers 
-    FROM http, headers 
+      length(textsend(http.content)) AS length_binary,
+      headers.value AS length_headers
+    FROM http, headers
     WHERE field = 'Content-Length';
-    
-     content_type | length_binary | length_headers 
+
+     content_type | length_binary | length_headers
     --------------+---------------+----------------
      image/gif    |         31958 | 31958
 
 To access only the headers you can do a HEAD-Request. This will not follow redirections.
 
-    SELECT 
-        http.status, 
+    SELECT
+        http.status,
         headers.value AS location
-    FROM 
+    FROM
         http_head('http://google.com') AS http
-        LEFT OUTER JOIN LATERAL (SELECT value  
-            FROM unnest(http.headers) 
+        LEFT OUTER JOIN LATERAL (SELECT value
+            FROM unnest(http.headers)
             WHERE field = 'Location') AS headers
             ON true;
-    
-     status |                         location                          
+
+     status |                         location
     --------+-----------------------------------------------------------
         302 | http://www.google.ch/?gfe_rd=cr&ei=ACESWLy_KuvI8zeghL64Ag
 
@@ -144,31 +145,31 @@ To access only the headers you can do a HEAD-Request. This will not follow redir
 Every HTTP call is a made up of an `http_request` and an `http_response`.
 
          Composite type "public.http_request"
-        Column    |       Type        | Modifiers 
+        Column    |       Type        | Modifiers
     --------------+-------------------+-----------
-     method       | http_method       | 
-     uri          | character varying | 
-     headers      | http_header[]     | 
-     content_type | character varying | 
-     content      | character varying | 
+     method       | http_method       |
+     uri          | character varying |
+     headers      | http_header[]     |
+     content_type | character varying |
+     content      | character varying |
 
         Composite type "public.http_response"
-        Column    |       Type        | Modifiers 
+        Column    |       Type        | Modifiers
     --------------+-------------------+-----------
-     status       | integer           | 
-     content_type | character varying | 
-     headers      | http_header[]     | 
-     content      | character varying | 
+     status       | integer           |
+     content_type | character varying |
+     headers      | http_header[]     |
+     content      | character varying |
 
 The utility functions, `http_get()`, `http_post()`, `http_put()`, `http_delete()` and `http_head()` are just wrappers around a master function, `http(http_request)` that returns `http_response`.
 
 The `headers` field for requests and response is a PostgreSQL array of type `http_header` which is just a simple tuple.
 
       Composite type "public.http_header"
-     Column |       Type        | Modifiers 
+     Column |       Type        | Modifiers
     --------+-------------------+-----------
-     field  | character varying | 
-     value  | character varying | 
+     field  | character varying |
+     value  | character varying |
 
 As seen in the examples, you can unspool the array of `http_header` tuples into a result set using the PostgreSQL `unnest()` function on the array. From there you select out the particular header you are interested in.
 
@@ -211,7 +212,7 @@ Select [CURL options](https://curl.haxx.se/libcurl/c/curl_easy_setopt.html) are 
 For example,
 
     SELECT http_set_curlopt('CURLOPT_PROXYPORT', '12345');
-    
+
 Will set the proxy port option for the lifetime of the database connection. You can reset all CURL options to their defaults using the `http_reset_curlopt()` function.
 
 ## Keep-Alive & Timeouts
@@ -226,8 +227,8 @@ High-performance applications may wish to enable keep-alive and connection persi
 
 By default a 5 second timeout is set for the completion of a request.  If a different timeout is desired the following GUC variable can be used to set it in milliseconds:
 
-    http.timeout_msec = 200    
-    
+    http.timeout_msec = 200
+
 ## Installation
 
 ### UNIX
