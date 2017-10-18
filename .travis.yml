@@ -9,7 +9,7 @@ addons:
   apt:
     packages:
     - curl
-    - libcurl-dev
+    - libcurl4-gnutls-dev
 
 compiler:
   - gcc
