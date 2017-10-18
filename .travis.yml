@@ -27,7 +27,7 @@ before_script:
   - sudo apt-get update
   - sudo apt-get -y install postgresql-9.6 postgresql-server-dev-9.6
   - sudo /etc/init.d/postgresql stop
-  - sudo -u postgres /usr/lib/postgresql/9.6/bin/pg_ctl --pgdata=/var/lib/postgresql/9.6/main -o "-c config_file=/etc/postgresql/9.6/main/postgresql.conf" --log=/tmp/postgres.log
+  - sudo -u postgres /usr/lib/postgresql/9.6/bin/pg_ctl start --pgdata=/var/lib/postgresql/9.6/main -o "-c config_file=/etc/postgresql/9.6/main/postgresql.conf" --log=/tmp/postgres.log
 
 script:
   - env
