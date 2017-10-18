@@ -1,0 +1,20 @@
+sudo: required
+
+dist: trusty
+
+addons:
+ 	postgresql: "9.6"
+	apt:
+		packages:
+		- curl
+		- libcurl-dev		
+
+compiler:
+	- gcc
+	- clang
+
+script:
+  - make
+  - sudo make install
+  - make installcheck
+  
