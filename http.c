@@ -876,7 +876,9 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Set the headers */
 	CURL_SETOPT(g_http_handle, CURLOPT_HTTPHEADER, headers);
 
-	/* Run it! */
+	/*************************************************************************
+	* PERFORM THE REQUEST!
+	**************************************************************************/
 	http_return = curl_easy_perform(g_http_handle);
 	elog(DEBUG2, "pgsql-http: queried '%s'", uri);
 

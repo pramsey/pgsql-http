@@ -1,2 +1,4 @@
 *.o
 *.so
+results/
+regression.diffs
