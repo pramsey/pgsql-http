@@ -175,7 +175,7 @@ void _PG_init(void)
 							 NULL,
 							 NULL,
 							 NULL);
-	
+
 	DefineCustomIntVariable("http.timeout_msec",
 							"request completion timeout in milliseconds",
 							NULL,
@@ -188,7 +188,7 @@ void _PG_init(void)
 							NULL,
 							NULL,
 							NULL);
-	
+
 	curl_global_init(CURL_GLOBAL_ALL);
 }
 
@@ -374,7 +374,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 		/* Skip null array items */
 		if ( isnull )
 			continue;
-		
+
 		rec = DatumGetHeapTupleHeader(value);
 		tup_type = HeapTupleHeaderGetTypeId(rec);
 		tup_typmod = HeapTupleHeaderGetTypMod(rec);
@@ -505,7 +505,7 @@ header_string_to_array(StringInfo si)
 	header_tuple_desc = typname_get_tupledesc("http", "http_header");
 
 	/* Prepare array building metadata */
-	elem_type = header_tuple_desc->tdtypeid;		
+	elem_type = header_tuple_desc->tdtypeid;
 	get_typlenbyvalalign(elem_type, &elem_len, &elem_byval, &elem_align);
 
 	/* Loop through string, matching regex pattern */
@@ -688,7 +688,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Processing */
 	CURLcode err;
 	char http_error_buffer[CURL_ERROR_SIZE];
-	
+
 	struct curl_slist *headers = NULL;
 	StringInfoData si_data;
 	StringInfoData si_headers;
@@ -762,6 +762,11 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Set the user agent */
 	CURL_SETOPT(g_http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
 
+	/* Restrict to just http/https for now */
+	/* in future, opening this up could be a GUC or */
+	/* another setopt */
+	CURL_SETOPT(g_http_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+
 	if ( g_use_keepalive )
 	{
 		/* Keep sockets held open */
@@ -797,7 +802,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		CURL_SETOPT(g_http_handle, CURLOPT_FOLLOWLOCATION, 1);
 		CURL_SETOPT(g_http_handle, CURLOPT_MAXREDIRS, 5);
 	}
-	
+
 	if ( g_use_keepalive )
 	{
 		/* Add a keep alive option to the headers to reuse network sockets */
