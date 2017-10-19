@@ -1,6 +1,6 @@
 # PostgreSQL HTTP Client
 
-![Build Status](https://api.travis-ci.org/pramsey/pgsql-http.svg?branch=master)
+[![Build Status](https://api.travis-ci.org/pramsey/pgsql-http.svg?branch=master)](https://travis-ci.org/pramsey/pgsql-http)
 
 ## Motivation
 
