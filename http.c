@@ -131,6 +131,9 @@ static http_curlopt settable_curlopts[] = {
 	{ "CURLOPT_PROXYUSERNAME", CURLOPT_PROXYUSERNAME, CURLOPT_STRING, false },
 	{ "CURLOPT_PROXYPASSWORD", CURLOPT_PROXYPASSWORD, CURLOPT_STRING, false },
 #endif
+// #if LIBCURL_VERSION_NUM >= 0x071304 /* 7.19.4 */
+// 	{ "CURLOPT_PROTOCOLS", CURLOPT_PROTOCOLS, CURLOPT_LONG, true },
+// #endif
 #if LIBCURL_VERSION_NUM >= 0x071504 /* 7.21.4 */
 	{ "CURLOPT_TLSAUTH_USERNAME", CURLOPT_TLSAUTH_USERNAME, CURLOPT_STRING, false },
 	{ "CURLOPT_TLSAUTH_PASSWORD", CURLOPT_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
@@ -765,7 +768,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Restrict to just http/https for now */
 	/* in future, opening this up could be a GUC or */
 	/* another setopt */
-	CURL_SETOPT(g_http_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+	// CURL_SETOPT(g_http_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
 
 	if ( g_use_keepalive )
 	{
