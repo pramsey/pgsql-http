@@ -760,8 +760,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Set up the HTTP timeout */
 	CURL_SETOPT(g_http_handle, CURLOPT_TIMEOUT_MS, g_timeout_msec);
 
-	/* Set the HTTP content encoding to gzip */
-	/*curl_easy_setopt(g_http_handle, CURLOPT_ACCEPT_ENCODING, HTTP_ENCODING);*/
+	/* Set the HTTP content encoding to all curl supports */
+	CURL_SETOPT(g_http_handle, CURLOPT_ACCEPT_ENCODING, "");
 
 	if ( method != HTTP_HEAD )
 	{
