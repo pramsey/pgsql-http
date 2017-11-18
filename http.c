@@ -765,10 +765,10 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Set the user agent */
 	CURL_SETOPT(g_http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
 
-	/* Restrict to just http/https for now */
-	/* in future, opening this up could be a GUC or */
-	/* another setopt */
-	// CURL_SETOPT(g_http_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+	/* Restrict to just http/https. Leaving unrestricted */
+	/* opens possibility of users requesting file:/// urls */
+	/* locally */
+	CURL_SETOPT(g_http_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
 
 	if ( g_use_keepalive )
 	{
