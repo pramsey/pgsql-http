@@ -131,6 +131,9 @@ static http_curlopt settable_curlopts[] = {
 	{ "CURLOPT_PROXYUSERNAME", CURLOPT_PROXYUSERNAME, CURLOPT_STRING, false },
 	{ "CURLOPT_PROXYPASSWORD", CURLOPT_PROXYPASSWORD, CURLOPT_STRING, false },
 #endif
+// #if LIBCURL_VERSION_NUM >= 0x071304 /* 7.19.4 */
+// 	{ "CURLOPT_PROTOCOLS", CURLOPT_PROTOCOLS, CURLOPT_LONG, true },
+// #endif
 #if LIBCURL_VERSION_NUM >= 0x071504 /* 7.21.4 */
 	{ "CURLOPT_TLSAUTH_USERNAME", CURLOPT_TLSAUTH_USERNAME, CURLOPT_STRING, false },
 	{ "CURLOPT_TLSAUTH_PASSWORD", CURLOPT_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
@@ -175,7 +178,7 @@ void _PG_init(void)
 							 NULL,
 							 NULL,
 							 NULL);
-	
+
 	DefineCustomIntVariable("http.timeout_msec",
 							"request completion timeout in milliseconds",
 							NULL,
@@ -188,7 +191,7 @@ void _PG_init(void)
 							NULL,
 							NULL,
 							NULL);
-	
+
 	curl_global_init(CURL_GLOBAL_ALL);
 }
 
@@ -299,6 +302,33 @@ header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
 }
 
 /**
+* Our own implementation of strcasestr.
+*/
+static char *http_strcasestr(const char *s, const char *find)
+{
+	char c, sc;
+	size_t len;
+
+	if ((c = *find++) != 0)
+	{
+		c = tolower((unsigned char)c);
+		len = strlen(find);
+		do
+		{
+			do
+			{
+				if ((sc = *s++) == 0)
+				return (NULL);
+			}
+			while ((char)tolower((unsigned char)sc) != c);
+		}
+		while (strncasecmp(s, find, len) != 0);
+		s--;
+	}
+	return ((char *)s);
+}
+
+/**
 * Quick and dirty, remove all \r from a StringInfo.
 */
 static void
@@ -347,7 +377,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 		/* Skip null array items */
 		if ( isnull )
 			continue;
-		
+
 		rec = DatumGetHeapTupleHeader(value);
 		tup_type = HeapTupleHeaderGetTypeId(rec);
 		tup_typmod = HeapTupleHeaderGetTypMod(rec);
@@ -478,7 +508,7 @@ header_string_to_array(StringInfo si)
 	header_tuple_desc = typname_get_tupledesc("http", "http_header");
 
 	/* Prepare array building metadata */
-	elem_type = header_tuple_desc->tdtypeid;		
+	elem_type = header_tuple_desc->tdtypeid;
 	get_typlenbyvalalign(elem_type, &elem_len, &elem_byval, &elem_align);
 
 	/* Loop through string, matching regex pattern */
@@ -537,14 +567,15 @@ http_get_handle()
 
 	/* Initialize the global handle if needed */
 	if (!handle)
+	{
 		handle = curl_easy_init();
+		/* Always want a default fast (1 second) connection timeout */
+		/* User can over-ride with http_set_curlopt() if they wish */
+		curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
+	}
 
 	if (!handle)
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
-
-	/* Always want a default fast (1 second) connection timeout */
-	/* User can over-ride with http_set_curlopt() if they wish */
-	curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
 
 	g_http_handle = handle;
 	return handle;
@@ -660,7 +691,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Processing */
 	CURLcode err;
 	char http_error_buffer[CURL_ERROR_SIZE];
-	
+
 	struct curl_slist *headers = NULL;
 	StringInfoData si_data;
 	StringInfoData si_headers;
@@ -734,6 +765,11 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Set the user agent */
 	CURL_SETOPT(g_http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
 
+	/* Restrict to just http/https for now */
+	/* in future, opening this up could be a GUC or */
+	/* another setopt */
+	// CURL_SETOPT(g_http_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+
 	if ( g_use_keepalive )
 	{
 		/* Keep sockets held open */
@@ -769,7 +805,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		CURL_SETOPT(g_http_handle, CURLOPT_FOLLOWLOCATION, 1);
 		CURL_SETOPT(g_http_handle, CURLOPT_MAXREDIRS, 5);
 	}
-	
+
 	if ( g_use_keepalive )
 	{
 		/* Add a keep alive option to the headers to reuse network sockets */
@@ -848,7 +884,9 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Set the headers */
 	CURL_SETOPT(g_http_handle, CURLOPT_HTTPHEADER, headers);
 
-	/* Run it! */
+	/*************************************************************************
+	* PERFORM THE REQUEST!
+	**************************************************************************/
 	http_return = curl_easy_perform(g_http_handle);
 	elog(DEBUG2, "pgsql-http: queried '%s'", uri);
 
@@ -909,7 +947,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 				/* charset=iso-8859-1 */
 				const char *param = (const char *) lfirst(lc);
 				const char *paramtype = "charset=";
-				if ( strcasestr(param, paramtype) )
+				if ( http_strcasestr(param, paramtype) )
 				{
 					/* iso-8859-1 */
 					const char *charset = param + strlen(paramtype);
