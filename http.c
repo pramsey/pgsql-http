@@ -28,7 +28,7 @@
  ***********************************************************************/
 
 /* Constants */
-#define HTTP_VERSION "1.1"
+#define HTTP_VERSION "1.2.1"
 #define HTTP_ENCODING "gzip"
 #define CURL_MIN_VERSION 0x071400 /* 7.20.0 */
 
@@ -160,10 +160,32 @@ void _PG_fini(void);
 static size_t http_writeback(void *contents, size_t size, size_t nmemb, void *userp);
 static size_t http_readback(void *buffer, size_t size, size_t nitems, void *instream);
 
-static bool g_use_keepalive;
-static int g_timeout_msec;
+/* Global variables */
+bool g_use_keepalive;
+int g_timeout_msec;
 
-static CURL * g_http_handle = NULL;
+CURL * g_http_handle = NULL;
+pqsigfunc pgsql_interrupt_handler = NULL;
+int http_interrupt_requested = 0;
+
+
+static int
+http_progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
+{
+	/* elog(DEBUG2, "http_interrupt_requested = %d", http_interrupt_requested); */
+	return http_interrupt_requested;
+}
+
+
+static void
+http_interrupt_handler(int sig)
+{
+	/* Handle the signal here */
+	elog(DEBUG2, "http_interrupt_handler: sig=%d", sig);
+	http_interrupt_requested = sig;
+	return;
+}
+
 
 /* Startup */
 void _PG_init(void)
@@ -192,13 +214,23 @@ void _PG_init(void)
 							NULL,
 							NULL);
 
+	/* Set up Curl! */
 	curl_global_init(CURL_GLOBAL_ALL);
+
+	/* Register our interrupt handler (http_handle_interrupt) */
+	/* and store the existing one so we can call it when we're */
+	/* through with our work */
+	pgsql_interrupt_handler = pqsignal(SIGINT, http_interrupt_handler);
+	http_interrupt_requested = 0;
 }
 
 /* Tear-down */
 void _PG_fini(void)
 {
-	if ( g_http_handle )
+	/* Re-register the original signal handler */
+	pqsignal(SIGINT, pgsql_interrupt_handler);
+
+	if (g_http_handle)
 	{
 		curl_easy_cleanup(g_http_handle);
 		g_http_handle = NULL;
@@ -705,6 +737,9 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Output */
 	HeapTuple tuple_out;
 
+	/* Set up the interrupt flag */
+	http_interrupt_requested = 0;
+
 	/* Version check */
 	http_check_curl_version(curl_version_info(CURLVERSION_NOW));
 
@@ -792,6 +827,10 @@ Datum http_request(PG_FUNCTION_ARGS)
 	initStringInfo(&si_headers);
 	CURL_SETOPT(g_http_handle, CURLOPT_WRITEDATA, (void*)(&si_data));
 	CURL_SETOPT(g_http_handle, CURLOPT_WRITEHEADER, (void*)(&si_headers));
+
+	/* Connect the progress callback for interrupt support */
+	CURL_SETOPT(g_http_handle, CURLOPT_XFERINFOFUNCTION, http_progress_callback);
+	CURL_SETOPT(g_http_handle, CURLOPT_NOPROGRESS, 0);
 
 	/* Set up the HTTP timeout */
 	CURL_SETOPT(g_http_handle, CURLOPT_TIMEOUT_MS, g_timeout_msec);
@@ -889,6 +928,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	**************************************************************************/
 	http_return = curl_easy_perform(g_http_handle);
 	elog(DEBUG2, "pgsql-http: queried '%s'", uri);
+	elog(DEBUG2, "pgsql-http: http_return '%d'", http_return);
 
 	/* Clean up some input things we don't need anymore */
 	ReleaseTupleDesc(tup_desc);
@@ -905,6 +945,17 @@ Datum http_request(PG_FUNCTION_ARGS)
 		curl_slist_free_all(headers);
 		curl_easy_cleanup(g_http_handle);
 		g_http_handle = NULL;
+
+		/* Propogate signal to the next handler */
+		if (http_return == CURLE_ABORTED_BY_CALLBACK &&
+			pgsql_interrupt_handler &&
+			http_interrupt_requested)
+		{
+			elog(DEBUG2, "calling pgsql_interrupt_handler");
+			(*pgsql_interrupt_handler)(http_interrupt_requested);
+			elog(ERROR, "HTTP request cancelled");
+		}
+
 		http_error(http_return, http_error_buffer);
 	}
 
