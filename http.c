@@ -37,6 +37,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>	/* INT_MAX */
+#include <signal.h> /* SIGINT */
 
 /* PostgreSQL */
 #include <postgres.h>
