@@ -173,7 +173,13 @@ int http_interrupt_requested = 0;
 static int
 http_progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
 {
-	/* elog(DEBUG2, "http_interrupt_requested = %d", http_interrupt_requested); */
+#ifdef WIN32
+	if (UNBLOCKED_SIGNAL_QUEUE())
+	{
+		pgwin32_dispatch_queued_signals();
+	}
+#endif
+	/* elog(DEBUG3, "http_interrupt_requested = %d", http_interrupt_requested); */
 	return http_interrupt_requested;
 }
 
@@ -954,6 +960,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		{
 			elog(DEBUG2, "calling pgsql_interrupt_handler");
 			(*pgsql_interrupt_handler)(http_interrupt_requested);
+			http_interrupt_requested = 0;
 			elog(ERROR, "HTTP request cancelled");
 		}
 
