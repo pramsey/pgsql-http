@@ -1,8 +1,7 @@
 CREATE EXTENSION http;
 
+set http.timeout_msec = 10000;
 SELECT http_set_curlopt('CURLOPT_TIMEOUT', '10');
-SELECT http_set_curlopt('CURLOPT_TCP_KEEPALIVE', '10');
-
 
 -- Status code
 SELECT status
