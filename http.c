@@ -636,7 +636,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 			if (opt.curlopt_type == CURLOPT_STRING)
 			{
 				err = curl_easy_setopt(g_http_handle, opt.curlopt, value);
-				elog(DEBUG2, "set '%s' to value '%s', return value = %d", opt.curlopt_str, value, err);
+				elog(DEBUG2, "pgsql-http: set '%s' to value '%s', return value = %d", opt.curlopt_str, value, err);
 			}
 			/* Argument is a long */
 			else if (opt.curlopt_type == CURLOPT_LONG)
@@ -646,7 +646,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 					elog(ERROR, "invalid integer provided for '%s'", opt.curlopt_str);
 
 				err = curl_easy_setopt(g_http_handle, opt.curlopt, value_long);
-				elog(DEBUG2, "set '%s' to value '%ld', return value = %d", opt.curlopt_str, value_long, err);
+				elog(DEBUG2, "pgsql-http: set '%s' to value '%ld', return value = %d", opt.curlopt_str, value_long, err);
 			}
 			else
 			{
@@ -700,7 +700,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	int http_return;
 	long status;
 	char *content_type = NULL;
-	int content_charset = 0;
+	int content_charset = -1;
 
 	/* Output */
 	HeapTuple tuple_out;
@@ -968,7 +968,6 @@ Datum http_request(PG_FUNCTION_ARGS)
 	{
 		/* Strip the carriage-returns, because who cares? */
 		string_info_remove_cr(&si_headers);
-		// elog(NOTICE, "header string: '%s'", si_headers.data);
 		values[RESP_HEADERS] = PointerGetDatum(header_string_to_array(&si_headers));
 		nulls[RESP_HEADERS] = false;
 	}
@@ -983,6 +982,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	{
 		char *content_str;
 		size_t content_len;
+		elog(DEBUG2, "pgsql-http: content_charset = %d", content_charset);
 
 		/* Apply character transcoding if necessary */
 		if ( content_charset < 0 )
