@@ -882,7 +882,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		char buffer[1024];
 
 		/* Read the content type */
-		if ( nulls[REQ_CONTENT_TYPE] )
+		if ( nulls[REQ_CONTENT_TYPE] || ! values[REQ_CONTENT_TYPE] )
 			elog(ERROR, "http_request.content_type is NULL");
 		content_type = TextDatumGetCString(values[REQ_CONTENT_TYPE]);
 
@@ -892,7 +892,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		pfree(content_type);
 
 		/* Read the content */
-		if ( nulls[REQ_CONTENT] )
+		if ( nulls[REQ_CONTENT] || ! values[REQ_CONTENT] )
 			elog(ERROR, "http_request.content is NULL");
 		content_text = DatumGetTextP(values[REQ_CONTENT]);
 		content_size = VARSIZE(content_text) - VARHDRSZ;
