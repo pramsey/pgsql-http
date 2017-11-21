@@ -267,11 +267,13 @@ http_writeback(void *contents, size_t size, size_t nmemb, void *userp)
 static size_t
 http_readback(void *buffer, size_t size, size_t nitems, void *instream)
 {
-	size_t realsize = size * nitems;
+	size_t reqsize = size * nitems;
 	StringInfo si = (StringInfo)instream;
-	memcpy(buffer, si->data + si->cursor, realsize);
-	si->cursor += realsize;
-	return realsize;
+	size_t remaining = si->len - si->cursor;
+	size_t readsize = reqsize < remaining ? reqsize : remaining;
+	memcpy(buffer, si->data + si->cursor, readsize);
+	si->cursor += readsize;
+	return readsize;
 }
 
 static void
