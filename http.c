@@ -169,7 +169,13 @@ CURL * g_http_handle = NULL;
 pqsigfunc pgsql_interrupt_handler = NULL;
 int http_interrupt_requested = 0;
 
-
+/*
+* To support request interruption, we have libcurl run the progress meter
+* callback frequently, and here we watch to see if PgSQL has flipped our
+* global 'http_interrupt_requested' flag. If it has been flipped,
+* the non-zero return value will cue libcurl to abort the transfer,
+* leading to a CURLE_ABORTED_BY_CALLBACK return on the curl_easy_perform()
+*/
 static int
 http_progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
 {
@@ -183,7 +189,11 @@ http_progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl
 	return http_interrupt_requested;
 }
 
-
+/*
+* We register this callback with the PgSQL signal handler to
+* capture SIGINT and set our local interupt flag so that
+* libcurl will eventually notice that a cancel is requested
+*/
 static void
 http_interrupt_handler(int sig)
 {
@@ -956,7 +966,12 @@ Datum http_request(PG_FUNCTION_ARGS)
 		curl_easy_cleanup(g_http_handle);
 		g_http_handle = NULL;
 
-		/* Propogate signal to the next handler */
+		/*
+		* If the request was aborted by an interrupt request
+		* we need to ensure that the interrupt signal
+		* is in turn sent to the downstream interrupt handler
+		* that we stored when we set up our own handler.
+		*/
 		if (http_return == CURLE_ABORTED_BY_CALLBACK &&
 			pgsql_interrupt_handler &&
 			http_interrupt_requested)
