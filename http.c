@@ -737,7 +737,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 	StringInfoData si_read;
 
 	int http_return;
-	long status;
+	long long_status;
+	int status;
 	char *content_type = NULL;
 	int content_charset = -1;
 
@@ -968,7 +969,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	}
 
 	/* Read the metadata from the handle directly */
-	if ( (CURLE_OK != curl_easy_getinfo(g_http_handle, CURLINFO_RESPONSE_CODE, &status)) ||
+	if ( (CURLE_OK != curl_easy_getinfo(g_http_handle, CURLINFO_RESPONSE_CODE, &long_status)) ||
 		 (CURLE_OK != curl_easy_getinfo(g_http_handle, CURLINFO_CONTENT_TYPE, &content_type)) )
 	{
 		curl_slist_free_all(headers);
@@ -984,7 +985,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 	nulls = palloc0(sizeof(bool)*ncolumns);
 
 	/* Status code */
-	values[RESP_STATUS] = Int64GetDatum(status);
+	status = long_status;
+	values[RESP_STATUS] = Int32GetDatum(status);
 	nulls[RESP_STATUS] = false;
 
 	/* Content type */
