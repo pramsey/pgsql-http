@@ -245,8 +245,8 @@ There is a build available at [postgresonline](http://www.postgresonline.com/jou
 
 - "What happens if the web page takes a long time to return?" Your SQL call will just wait there until it does. Make sure your web service fails fast.
 - "What if the web page returns junk?" Your SQL call will have to test for junk before doing anything with the payload.
-- "What if the web page never returns?" I've found this code can really hang a back-end hard. The curl timeout settings need more testing and tweaking for faster failure and timeout.
-
+- "What if the web page never returns?" Set a short timeout, or send a cancel to the request, or just wait forever. 
+- "What if a user queries a page they shouldn't?" Restrict function access, or just don't install a footgun like this extension where users can access it.
 
 ## To Do
 
