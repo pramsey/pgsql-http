@@ -272,7 +272,9 @@ http_writeback(void *contents, size_t size, size_t nmemb, void *userp)
 
 /**
 * This function is passed into CURL as the CURLOPT_READFUNCTION,
-* this allows the PUT operation to read the data it needs.
+* this allows the PUT operation to read the data it needs. We
+* pass a StringInfo as our input, and per the callback contract
+* return the number of bytes read at each call.
 */
 static size_t
 http_readback(void *buffer, size_t size, size_t nitems, void *instream)
