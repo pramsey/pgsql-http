@@ -4,7 +4,7 @@
 
 ## Motivation
 
-Wouldn't it be nice to be able to write a trigger that called a web service? Either to get back a result, or to poke that service into refreshing itself against the new state of the database?
+Wouldn't it be nice to be able to write a trigger that [called a web service](https://boundlessgeo.com/2012/04/http-for-postgresql/)? Either to get back a result, or to poke that service into refreshing itself against the new state of the database?
 
 This extension is for that.
 
