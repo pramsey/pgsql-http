@@ -18,97 +18,89 @@ This extension is for that.
     (1 row)
 
 
-    > SELECT content FROM http_get('http://localhost');
+    > SELECT content FROM http_get('http://httpbin.org/ip');
 
-                       content
-    ----------------------------------------------
-     <html><body><h1>It works!</h1></body></html>
+               content
+    -----------------------------
+     {                          +
+       "origin": "184.66.241.40"+
+     }                          +
     (1 row)
 
-    > SELECT content::json->>'field' FROM http((
+
+    > SELECT content::json->'headers'->>'Authorization' FROM http((
                 'GET',
-                 'http://localhost/v1/products/list',
+                 'http://httpbin.org/headers',
                  ARRAY[http_header('Authorization','Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9')],
                  NULL,
                  NULL
               )::http_request)
+
                        content
     ----------------------------------------------
-     my value field
+     Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
     (1 row)
 
-    > SELECT status, content_type, content FROM http_get('http://localhost');
+    > SELECT status, content_type FROM http_get('http://httpbin.org/');
 
-     status | content_type |                   content
-    --------+--------------+----------------------------------------------
-        200 | text/html    | <html><body><h1>It works!</h1></body></html>
+     status |       content_type
+    --------+--------------------------
+        200 | text/html; charset=utf-8
     (1 row)
 
 
-    > SELECT (unnest(headers)).* FROM http_get('http://localhost');
+    > SELECT (unnest(headers)).* FROM http_get('http://httpbin.org/');
 
-          field       |                                value
-    ------------------+----------------------------------------------------------------------
-     Date             | Wed, 17 Dec 2014 21:47:27 GMT
-     Server           | Apache/2.2.26 (Unix) DAV/2 PHP/5.4.30 mod_ssl/2.2.26 OpenSSL/0.9.8za
-     Content-Location | index.html.en
-     Vary             | negotiate
-     TCN              | choice
-     Last-Modified    | Sat, 30 Nov 2013 03:48:45 GMT
-     ETag             | "a2961-2c-4ec5cd2d28140"
-     Accept-Ranges    | bytes
-     Content-Length   | 44
-     Connection       | close
-     Content-Type     | text/html
-     Content-Language | en
+                  field               |             value
+    ----------------------------------+-------------------------------
+     Connection                       | close
+     Server                           | meinheld/0.6.1
+     Date                             | Tue, 09 Jan 2018 18:40:30 GMT
+     Content-Type                     | text/html; charset=utf-8
+     Content-Length                   | 13011
+     Access-Control-Allow-Origin      | *
+     Access-Control-Allow-Credentials | true
+     X-Powered-By                     | Flask
+     X-Processed-Time                 | 0.0208520889282
+     Via                              | 1.1 vegur
 
 
-    > SELECT status,content FROM http_put('http://localhost/resource', 'some text', 'text/plain');
+    > SELECT status, content_type, content::json->>'data' AS data
+      FROM http_put('http://httpbin.org/put', 'some text', 'text/plain');
 
-     status |                                content
-    --------+-----------------------------------------------------------------------
-        405 | <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">                   +
-            | <html><head>                                                         +
-            | <title>405 Method Not Allowed</title>                                +
-            | </head><body>                                                        +
-            | <h1>Method Not Allowed</h1>                                          +
-            | <p>The requested method PUT is not allowed for the URL /resource.</p>+
-            | </body></html>                                                       +
-            |
+     status |   content_type   |   data
+    --------+------------------+-----------
+        200 | application/json | some text
 
-    > SELECT status, content FROM http_delete('http://localhost');
 
-     status |                                    content
-    --------+-------------------------------------------------------------------------------
-        405 | <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">                           +
-            | <html><head>                                                                 +
-            | <title>405 Method Not Allowed</title>                                        +
-            | </head><body>                                                                +
-            | <h1>Method Not Allowed</h1>                                                  +
-            | <p>The requested method DELETE is not allowed for the URL /index.html.en.</p>+
-            | </body></html>                                                               +
-            |
+    > SELECT status, content_type, content::json->>'url' AS url
+      FROM http_delete('http://httpbin.org/delete');
+
+     status |   content_type   |            url
+    --------+------------------+---------------------------
+        200 | application/json | http://httpbin.org/delete
+
 
 To POST to a URL using a data payload instead of parameters embedded in the URL, use the `application/x-www-form-urlencoded` content type.
 
-    SELECT status, content
-      FROM http_post('http://localhost/myform',
+    SELECT status, content::json->>'form'
+      FROM http_post('http://httpbin.org/post',
                      'myvar=myval&foo=bar',
-                     'application/x-www-form-urlencoded);
+                     'application/x-www-form-urlencoded');
 
 
 Remember to [URL encode](http://en.wikipedia.org/wiki/Percent-encoding) content that includes any "special" characters (really, anything other than a-z and 0-9).
 
-    SELECT status, content
-      FROM http_post('http://localhost/myform',
+    SELECT status, content::json->>'form'
+      FROM http_post('http://httpbin.org/post',
                      'myvar=' || urlencode('my special string & things?'),
-                     'application/x-www-form-urlencoded);
+                     'application/x-www-form-urlencoded');
 
 To access binary content, you must coerce the content from the default `varchar` representation to a `bytea` representation using the `textsend` function. Using the default `varchar::bytea` cast will not work, as the cast will stop the first time it hits a zero-valued byte (common in binary data).
 
     WITH
       http AS (
-        SELECT * FROM http_get('http://localhost/PoweredByMacOSXLarge.gif')
+        SELECT * FROM http_get('http://httpbin.org/image/png')
       ),
       headers AS (
         SELECT (unnest(headers)).* FROM http
@@ -122,7 +114,7 @@ To access binary content, you must coerce the content from the default `varchar`
 
      content_type | length_binary | length_headers
     --------------+---------------+----------------
-     image/gif    |         31958 | 31958
+     image/png    |          8090 | 8090
 
 To access only the headers you can do a HEAD-Request. This will not follow redirections.
 
@@ -245,7 +237,7 @@ There is a build available at [postgresonline](http://www.postgresonline.com/jou
 
 - "What happens if the web page takes a long time to return?" Your SQL call will just wait there until it does. Make sure your web service fails fast.
 - "What if the web page returns junk?" Your SQL call will have to test for junk before doing anything with the payload.
-- "What if the web page never returns?" Set a short timeout, or send a cancel to the request, or just wait forever. 
+- "What if the web page never returns?" Set a short timeout, or send a cancel to the request, or just wait forever.
 - "What if a user queries a page they shouldn't?" Restrict function access, or just don't install a footgun like this extension where users can access it.
 
 ## To Do
