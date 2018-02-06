@@ -225,7 +225,7 @@ By default a 5 second timeout is set for the completion of a request.  If a diff
 
 ### UNIX
 
-If you have PostgreSQL devel packages and CURL devel packages installed (>= 0.7.20), you should have `pg_config` and `curl-config` on your path, so you should be able to just run `make`, then `make install`, then in your database `CREATE EXTENSION http`.
+If you have PostgreSQL (>= 9.3) devel packages and CURL devel packages installed (>= 0.7.20), you should have `pg_config` and `curl-config` on your path, so you should be able to just run `make`, then `make install`, then in your database `CREATE EXTENSION http`.
 
 If you already installed a previous version and you just want to upgrade, then `ALTER EXTENSION http UPDATE`.
 
