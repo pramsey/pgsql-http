@@ -71,7 +71,6 @@
 /* Set up PgSQL */
 PG_MODULE_MAGIC;
 
-
 /* HTTP request methods we support */
 typedef enum {
 	HTTP_GET,
@@ -154,7 +153,6 @@ static http_curlopt settable_curlopts[] = {
 	{ NULL, 0, 0, false } /* Array null terminator */
 };
 
-
 /* Function signatures */
 void _PG_init(void);
 void _PG_fini(void);
@@ -166,6 +164,13 @@ bool g_use_keepalive;
 int g_timeout_msec;
 
 CURL * g_http_handle = NULL;
+
+/*
+* Interrupt support is dependent on CURLOPT_XFERINFOFUNCTION which is
+* only available from 7.32.0 and up
+*/
+#if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
+
 pqsigfunc pgsql_interrupt_handler = NULL;
 int http_interrupt_requested = 0;
 
@@ -202,6 +207,7 @@ http_interrupt_handler(int sig)
 	http_interrupt_requested = sig;
 	return;
 }
+#endif /* 7.39.0 */
 
 
 /* Startup */
@@ -234,18 +240,22 @@ void _PG_init(void)
 	/* Set up Curl! */
 	curl_global_init(CURL_GLOBAL_ALL);
 
+#if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 	/* Register our interrupt handler (http_handle_interrupt) */
 	/* and store the existing one so we can call it when we're */
 	/* through with our work */
 	pgsql_interrupt_handler = pqsignal(SIGINT, http_interrupt_handler);
 	http_interrupt_requested = 0;
+#endif
 }
 
 /* Tear-down */
 void _PG_fini(void)
 {
+#if LIBCURL_VERSION_NUM >= 0x072700
 	/* Re-register the original signal handler */
 	pqsignal(SIGINT, pgsql_interrupt_handler);
+#endif
 
 	if (g_http_handle)
 	{
@@ -759,8 +769,10 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Output */
 	HeapTuple tuple_out;
 
+#if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 	/* Set up the interrupt flag */
 	http_interrupt_requested = 0;
+#endif
 
 	/* Version check */
 	http_check_curl_version(curl_version_info(CURLVERSION_NOW));
@@ -850,9 +862,11 @@ Datum http_request(PG_FUNCTION_ARGS)
 	CURL_SETOPT(g_http_handle, CURLOPT_WRITEDATA, (void*)(&si_data));
 	CURL_SETOPT(g_http_handle, CURLOPT_WRITEHEADER, (void*)(&si_headers));
 
+#if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 	/* Connect the progress callback for interrupt support */
 	CURL_SETOPT(g_http_handle, CURLOPT_XFERINFOFUNCTION, http_progress_callback);
 	CURL_SETOPT(g_http_handle, CURLOPT_NOPROGRESS, 0);
+#endif
 
 	/* Set up the HTTP timeout */
 	CURL_SETOPT(g_http_handle, CURLOPT_TIMEOUT_MS, g_timeout_msec);
@@ -968,6 +982,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		curl_easy_cleanup(g_http_handle);
 		g_http_handle = NULL;
 
+#if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 		/*
 		* If the request was aborted by an interrupt request
 		* we need to ensure that the interrupt signal
@@ -983,6 +998,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 			http_interrupt_requested = 0;
 			elog(ERROR, "HTTP request cancelled");
 		}
+#endif
 
 		http_error(http_return, http_error_buffer);
 	}
