@@ -22,6 +22,14 @@ content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_get('http://httpbin.org/anything?foo=bar');
 
+-- GET with data
+SELECT status,
+content::json->'args' as args,
+content::json->>'data' as data,
+content::json->'url' as url,
+content::json->'method' as method
+from http(('GET', 'http://httpbin.org/anything', NULL, 'application/json', '{"search": "toto"}'));
+
 -- DELETE
 SELECT status,
 content::json->'args' AS args,

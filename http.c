@@ -911,8 +911,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 		headers = header_array_to_slist(array, headers);
 	}
 
-	/* Specific handling for methods that send a content payload */
-	if ( method == HTTP_POST || method == HTTP_PUT )
+	/* If we have a payload we send it, assuming we're either POST, GET or PUT */
+	if ( ! nulls[REQ_CONTENT] && values[REQ_CONTENT] )
 	{
 		text *content_text;
 		long content_size;
@@ -930,15 +930,18 @@ Datum http_request(PG_FUNCTION_ARGS)
 		pfree(content_type);
 
 		/* Read the content */
-		if ( nulls[REQ_CONTENT] || ! values[REQ_CONTENT] )
-			elog(ERROR, "http_request.content is NULL");
 		content_text = DatumGetTextP(values[REQ_CONTENT]);
 		content_size = VARSIZE(content_text) - VARHDRSZ;
 
-		if ( method == HTTP_POST )
+		if ( method == HTTP_GET || method == HTTP_POST )
 		{
 			/* Add the content to the payload */
 			CURL_SETOPT(g_http_handle, CURLOPT_POST, 1);
+			if ( method == HTTP_GET )
+			{
+				/* Force the verb to be GET */
+				CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, "GET");
+			}
 			CURL_SETOPT(g_http_handle, CURLOPT_POSTFIELDS, text_to_cstring(content_text));
 		}
 		else if ( method == HTTP_PUT )
@@ -963,6 +966,11 @@ Datum http_request(PG_FUNCTION_ARGS)
 	else if ( method == HTTP_HEAD )
 	{
 		CURL_SETOPT(g_http_handle, CURLOPT_NOBODY, 1);
+	}
+	else if ( method == HTTP_PUT || method == HTTP_POST )
+	{
+		/* If we had a content we do not reach that part */
+		elog(ERROR, "http_request.content is NULL");
 	}
 
 	/* Set the headers */

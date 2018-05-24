@@ -37,6 +37,18 @@ FROM http_get('http://httpbin.org/anything?foo=bar');
     200 | {"foo":"bar"} | "http://httpbin.org/anything?foo=bar" | "GET"
 (1 row)
 
+-- GET with data
+SELECT status,
+content::json->'args' as args,
+content::json->>'data' as data,
+content::json->'url' as url,
+content::json->'method' as method
+from http(('GET', 'http://httpbin.org/anything', NULL, 'application/json', '{"search": "toto"}'));
+ status | args |        data        |              url              | method 
+--------+------+--------------------+-------------------------------+--------
+    200 | {}   | {"search": "toto"} | "http://httpbin.org/anything" | "GET"
+(1 row)
+
 -- DELETE
 SELECT status,
 content::json->'args' AS args,
