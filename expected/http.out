@@ -32,11 +32,9 @@ content::json->'args' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_get('http://httpbin.org/anything?foo=bar');
- status |       args       |                  url                  | method 
---------+------------------+---------------------------------------+--------
-    200 | {               +| "http://httpbin.org/anything?foo=bar" | "GET"
-        |     "foo": "bar"+|                                       | 
-        |   }              |                                       | 
+ status |     args      |                  url                  | method 
+--------+---------------+---------------------------------------+--------
+    200 | {"foo":"bar"} | "http://httpbin.org/anything?foo=bar" | "GET"
 (1 row)
 
 -- DELETE
@@ -45,11 +43,9 @@ content::json->'args' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_delete('http://httpbin.org/anything?foo=bar');
- status |       args       |                  url                  |  method  
---------+------------------+---------------------------------------+----------
-    200 | {               +| "http://httpbin.org/anything?foo=bar" | "DELETE"
-        |     "foo": "bar"+|                                       | 
-        |   }              |                                       | 
+ status |     args      |                  url                  |  method  
+--------+---------------+---------------------------------------+----------
+    200 | {"foo":"bar"} | "http://httpbin.org/anything?foo=bar" | "DELETE"
 (1 row)
 
 -- PUT
@@ -59,11 +55,9 @@ content::json->'args' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_put('http://httpbin.org/anything?foo=bar','payload','text/plain');
- status |   data    |       args       |                  url                  | method 
---------+-----------+------------------+---------------------------------------+--------
-    200 | "payload" | {               +| "http://httpbin.org/anything?foo=bar" | "PUT"
-        |           |     "foo": "bar"+|                                       | 
-        |           |   }              |                                       | 
+ status |   data    |     args      |                  url                  | method 
+--------+-----------+---------------+---------------------------------------+--------
+    200 | "payload" | {"foo":"bar"} | "http://httpbin.org/anything?foo=bar" | "PUT"
 (1 row)
 
 -- POST
@@ -73,11 +67,9 @@ content::json->'args' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_post('http://httpbin.org/anything?foo=bar','payload','text/plain');
- status |   data    |       args       |                  url                  | method 
---------+-----------+------------------+---------------------------------------+--------
-    200 | "payload" | {               +| "http://httpbin.org/anything?foo=bar" | "POST"
-        |           |     "foo": "bar"+|                                       | 
-        |           |   }              |                                       | 
+ status |   data    |     args      |                  url                  | method 
+--------+-----------+---------------+---------------------------------------+--------
+    200 | "payload" | {"foo":"bar"} | "http://httpbin.org/anything?foo=bar" | "POST"
 (1 row)
 
 -- HEAD
@@ -97,11 +89,9 @@ SELECT status,
 content::json->'args' AS args,
 content::json->'url' AS url
 FROM http_get('http://httpbin.org/redirect-to?url=http%3A%2F%2Fhttpbin%2Eorg%2Fget%3Ffoo%3Dbar');
- status |       args       |               url                
---------+------------------+----------------------------------
-    200 | {               +| "http://httpbin.org/get?foo=bar"
-        |     "foo": "bar"+| 
-        |   }              | 
+ status |     args      |               url                
+--------+---------------+----------------------------------
+    200 | {"foo":"bar"} | "http://httpbin.org/get?foo=bar"
 (1 row)
 
 -- Request image
