@@ -22,9 +22,7 @@ This extension is for that.
 
                content
     -----------------------------
-     {                          +
-       "origin": "184.66.241.40"+
-     }                          +
+     {"origin":"24.69.186.43"}                          +
     (1 row)
 
 
