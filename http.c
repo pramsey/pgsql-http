@@ -613,6 +613,7 @@ header_string_to_array(StringInfo si)
 		arr_nelems++;
 	}
 
+	regfree(&regex);
 	ReleaseTupleDesc(header_tuple_desc);
 	return construct_array(arr_elems, arr_nelems, elem_type, elem_len, elem_byval, elem_align);
 }
