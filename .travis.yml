@@ -30,6 +30,7 @@ before_script:
   - sudo apt-get -y remove --purge postgresql-10
   - sudo apt-get -y remove --purge postgresql-11
   - sudo apt-get -y autoremove
+  - rm -rf /etc/postgresql/ /etc/postgresql-common/ /var/lib/postgresql/
   - wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
   - sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main $PG_VERSION"    
   - sudo apt-get update
