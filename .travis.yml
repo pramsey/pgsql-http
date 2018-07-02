@@ -27,13 +27,15 @@ before_script:
   - sudo apt-get -y remove --purge postgresql-9.3
   - sudo apt-get -y remove --purge postgresql-9.4
   - sudo apt-get -y remove --purge postgresql-9.5
+  - sudo apt-get -y remove --purge postgresql-9.6
   - sudo apt-get -y autoremove
   - apt-key adv --fetch-keys https://www.postgresql.org/media/keys/ACCC4CF8.asc
   - sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main $PG_VERSION"    
   - sudo apt-get update
   - sudo apt-get -y install postgresql-$PG_VERSION postgresql-server-dev-$PG_VERSION
-  - echo "local all postgres  trust" | sudo tee /etc/postgresql/$PG_VERSION/main/pg_hba.conf
+  # - echo "local all postgres  trust" | sudo tee /etc/postgresql/$PG_VERSION/main/pg_hba.conf
   - sudo cat /etc/postgresql/$PG_VERSION/main/pg_hba.conf
+  - sudo cat /etc/postgresql/$PG_VERSION/main/postgresql.conf
   - sudo /etc/init.d/postgresql start
 
 
@@ -41,5 +43,5 @@ script:
   - env
   - make
   - sudo make install
-  - PGUSER=postgres make installcheck || (cat regression.diffs && /bin/false)
+  - PGUSER=postgres PGPORT=54233 make installcheck || (cat regression.diffs && /bin/false)
 
