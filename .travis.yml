@@ -36,6 +36,7 @@ before_script:
   - sudo apt-get update
   - sudo apt-get -y install postgresql-$PG_VERSION postgresql-server-dev-$PG_VERSION
   - echo "local all all  trust" > /tmp/pg_hba.conf
+  - echo "127.0.0.1 all all  trust" >> /tmp/pg_hba.conf
   - sudo mv /tmp/pg_hba.conf /etc/postgresql/$PG_VERSION/main/pg_hba.conf
   - sudo /etc/init.d/postgresql start
 
@@ -47,5 +48,5 @@ script:
   - env
   - make
   - sudo make install
-  - PGUSER=postgres PGHOST=localhost make installcheck || (cat regression.diffs && /bin/false)
+  - PGUSER=postgres make installcheck || (cat regression.diffs && /bin/false)
 
