@@ -22,17 +22,19 @@ env:
 
 before_script:
   - sudo /etc/init.d/postgresql stop
-  - sudo apt-get -y remove --purge postgresql-9.1
-  - sudo apt-get -y remove --purge postgresql-9.2
-  - sudo apt-get -y remove --purge postgresql-9.3
-  - sudo apt-get -y remove --purge postgresql-9.4
-  - sudo apt-get -y remove --purge postgresql-9.5
-  - sudo apt-get -y remove --purge postgresql-9.6
+  - sudo apt-get -y --purge remove postgresql-9.1
+  - sudo apt-get -y --purge remove postgresql-9.2
+  - sudo apt-get -y --purge remove postgresql-9.3
+  - sudo apt-get -y --purge remove postgresql-9.4
+  - sudo apt-get -y --purge remove postgresql-9.5
+  - sudo apt-get -y --purge remove postgresql-9.6
   - sudo apt-get -y autoremove
+  - sudo rm -rf /var/lib/postgresql
   - apt-key adv --fetch-keys https://www.postgresql.org/media/keys/ACCC4CF8.asc
   - sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main $PG_VERSION"    
-  - sudo apt-get update
-  - sudo apt-get -y install postgresql-$PG_VERSION postgresql-server-dev-$PG_VERSION
+  - sudo apt-get update -qq
+  - sudo apt-get -y install postgresql-$PG_VERSION postgresql-server-$PG_VERSION postgresql-server-dev-$PG_VERSION
+  - sudo chmod 644 /etc/postgresql/$PG_VERSION/main/pg_hba.conf
   - sudo cp ci/pg_hba.conf /etc/postgresql/$PG_VERSION/main/pg_hba.conf
   - sudo cat /etc/postgresql/$PG_VERSION/main/pg_hba.conf
   - sudo cat /etc/postgresql/$PG_VERSION/main/postgresql.conf
