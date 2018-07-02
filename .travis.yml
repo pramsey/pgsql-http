@@ -33,6 +33,8 @@ before_script:
   - sudo apt-get update
   - sudo apt-get -y install postgresql-$PG_VERSION postgresql-server-dev-$PG_VERSION
   - sudo /etc/init.d/postgresql start
+  - sudo cat /etc/postgresql/10/main/pg_hba.conf
+  - sudo cat /etc/postgresql/10/main/postgresql.conf
 
 
 script:
