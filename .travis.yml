@@ -38,6 +38,7 @@ before_script:
   - sudo echo "local all all  trust" > /etc/postgresql/$PG_VERSION/main/pg_hba.conf
   - sudo /etc/init.d/postgresql start
 
+
   # - sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main $PG_VERSION" >> /etc/apt/sources.list.d/postgresql.list'
   # - sudo -u postgres /usr/lib/postgresql/$PG_VERSION/bin/pg_ctl start --pgdata=/var/lib/postgresql/$PG_VERSION/main -o "-c config_file=/etc/postgresql/$PG_VERSION/main/postgresql.conf" --log=/tmp/postgres.log
 
