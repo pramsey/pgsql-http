@@ -38,6 +38,7 @@ before_script:
   - sudo cp ci/pg_hba.conf /etc/postgresql/$PG_VERSION/main/pg_hba.conf
   - sudo cat /etc/postgresql/$PG_VERSION/main/pg_hba.conf
   - sudo cat /etc/postgresql/$PG_VERSION/main/postgresql.conf
+  - sudo find / -name pg_hba.conf
   - sudo /etc/init.d/postgresql start
 
 
