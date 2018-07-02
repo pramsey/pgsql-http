@@ -7,14 +7,17 @@ addons:
     packages:
     - curl
     - libcurl4-gnutls-dev
+    - ca-certificates
+    - software-properties-common 
+    - python-software-properties
 
 compiler:
   - gcc
-  - clang
+  # - clang
 
 env:
   - PG_VERSION=9.6
-  - PG_VERSION=10  
+  # - PG_VERSION=10
 
 before_script:
   - sudo /etc/init.d/postgresql stop
@@ -27,11 +30,13 @@ before_script:
   - sudo apt-get -y remove --purge postgresql-10
   - sudo apt-get -y remove --purge postgresql-11
   - sudo apt-get -y autoremove
-  - sudo apt-key adv --keyserver pool.sks-keyservers.net --recv-keys 7FCC7D46ACCC4CF8
-  - sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main $PG_VERSION" >> /etc/apt/sources.list.d/postgresql.list'
+  - wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+  - sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main $PG_VERSION"    
   - sudo apt-get update
   - sudo apt-get -y install postgresql-$PG_VERSION postgresql-server-dev-$PG_VERSION
   - sudo /etc/init.d/postgresql-$PG_VERSION start
+
+  # - sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main $PG_VERSION" >> /etc/apt/sources.list.d/postgresql.list'
   # - sudo -u postgres /usr/lib/postgresql/$PG_VERSION/bin/pg_ctl start --pgdata=/var/lib/postgresql/$PG_VERSION/main -o "-c config_file=/etc/postgresql/$PG_VERSION/main/postgresql.conf" --log=/tmp/postgres.log
 
 script:
