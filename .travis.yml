@@ -32,9 +32,8 @@ before_script:
   - sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main $PG_VERSION"    
   - sudo apt-get update
   - sudo apt-get -y install postgresql-$PG_VERSION postgresql-server-dev-$PG_VERSION
+  - echo "local all postgres  trust" | sudo tee /etc/postgresql/$PG_VERSION/main/pg_hba.conf
   - sudo /etc/init.d/postgresql start
-  - sudo cat /etc/postgresql/10/main/pg_hba.conf
-  - sudo cat /etc/postgresql/10/main/postgresql.conf
 
 
 script:
