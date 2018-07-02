@@ -44,5 +44,5 @@ script:
   - env
   - make
   - sudo make install
-  - PGUSER=postgres make installcheck || (cat regression.diffs && /bin/false)
+  - PGUSER=postgres PGHOST=localhost make installcheck || (cat regression.diffs && /bin/false)
 
