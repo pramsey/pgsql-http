@@ -10,6 +10,7 @@ addons:
     - ca-certificates
     - software-properties-common 
     - python-software-properties
+    - gnupg-curl
 
 compiler:
   - gcc
