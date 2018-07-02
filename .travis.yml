@@ -34,16 +34,11 @@ before_script:
   - sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main $PG_VERSION"    
   - sudo apt-get update -qq
   - sudo apt-get -y install postgresql-$PG_VERSION postgresql-server-dev-$PG_VERSION
-  - sudo chmod 644 /etc/postgresql/$PG_VERSION/main/pg_hba.conf
   - sudo cp ci/pg_hba.conf /etc/postgresql/$PG_VERSION/main/pg_hba.conf
-  - sudo cat /etc/postgresql/$PG_VERSION/main/pg_hba.conf
-  - sudo cat /etc/postgresql/$PG_VERSION/main/postgresql.conf
-  - sudo find / -name pg_hba.conf
   - sudo /etc/init.d/postgresql reload
 
 
 script:
-  - env
   - make
   - sudo make install
   - PGUSER=postgres PGPORT=5432 make installcheck || (cat regression.diffs && /bin/false)
