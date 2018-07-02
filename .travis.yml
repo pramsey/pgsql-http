@@ -43,5 +43,5 @@ script:
   - env
   - make
   - sudo make install
-  - PGUSER=postgres PGPORT=54233 make installcheck || (cat regression.diffs && /bin/false)
+  - PGUSER=postgres PGPORT=5433 make installcheck || (cat regression.diffs && /bin/false)
 
