@@ -28,7 +28,7 @@
  ***********************************************************************/
 
 /* Constants */
-#define HTTP_VERSION "1.2.1"
+#define HTTP_VERSION "1.2.4"
 #define HTTP_ENCODING "gzip"
 #define CURL_MIN_VERSION 0x071400 /* 7.20.0 */
 
@@ -50,6 +50,7 @@
 #include <commands/extension.h>
 #include <lib/stringinfo.h>
 #include <mb/pg_wchar.h>
+#include <nodes/pg_list.h>
 #include <utils/array.h>
 #include <utils/builtins.h>
 #include <utils/lsyscache.h>
@@ -111,6 +112,7 @@ typedef enum {
 /* CURLOPT string/enum value mapping */
 typedef struct {
 	char *curlopt_str;
+	char *curlopt_val;
 	CURLoption curlopt;
 	http_curlopt_type curlopt_type;
 	bool superuser_only;
@@ -119,47 +121,47 @@ typedef struct {
 /* CURLOPT values we allow user to set at run-time */
 /* Be careful adding these, as they can be a security risk */
 static http_curlopt settable_curlopts[] = {
-	{ "CURLOPT_CAINFO", CURLOPT_CAINFO, CURLOPT_STRING, false },
-	{ "CURLOPT_TIMEOUT", CURLOPT_TIMEOUT, CURLOPT_LONG, false },
-	{ "CURLOPT_TIMEOUT_MS", CURLOPT_TIMEOUT_MS, CURLOPT_LONG, false },
-	{ "CURLOPT_CONNECTTIMEOUT", CURLOPT_CONNECTTIMEOUT, CURLOPT_LONG, false },
+	{ "CURLOPT_CAINFO", NULL, CURLOPT_CAINFO, CURLOPT_STRING, false },
+	{ "CURLOPT_TIMEOUT", NULL, CURLOPT_TIMEOUT, CURLOPT_LONG, false },
+	{ "CURLOPT_TIMEOUT_MS", NULL, CURLOPT_TIMEOUT_MS, CURLOPT_LONG, false },
+	{ "CURLOPT_CONNECTTIMEOUT", NULL, CURLOPT_CONNECTTIMEOUT, CURLOPT_LONG, false },
 #if LIBCURL_VERSION_NUM >= 0x070e01 /* 7.14.1 */
-	{ "CURLOPT_PROXY", CURLOPT_PROXY, CURLOPT_STRING, false },
-	{ "CURLOPT_PROXYPORT", CURLOPT_PROXYPORT, CURLOPT_LONG, false },
+	{ "CURLOPT_PROXY", NULL, CURLOPT_PROXY, CURLOPT_STRING, false },
+	{ "CURLOPT_PROXYPORT", NULL, CURLOPT_PROXYPORT, CURLOPT_LONG, false },
 #endif
 #if LIBCURL_VERSION_NUM >= 0x071301 /* 7.19.1 */
-	{ "CURLOPT_PROXYUSERNAME", CURLOPT_PROXYUSERNAME, CURLOPT_STRING, false },
-	{ "CURLOPT_PROXYPASSWORD", CURLOPT_PROXYPASSWORD, CURLOPT_STRING, false },
+	{ "CURLOPT_PROXYUSERNAME", NULL, CURLOPT_PROXYUSERNAME, CURLOPT_STRING, false },
+	{ "CURLOPT_PROXYPASSWORD", NULL, CURLOPT_PROXYPASSWORD, CURLOPT_STRING, false },
 #endif
 // #if LIBCURL_VERSION_NUM >= 0x071304 /* 7.19.4 */
 // 	{ "CURLOPT_PROTOCOLS", CURLOPT_PROTOCOLS, CURLOPT_LONG, true },
 // #endif
 #if LIBCURL_VERSION_NUM >= 0x071504 /* 7.21.4 */
-	{ "CURLOPT_TLSAUTH_USERNAME", CURLOPT_TLSAUTH_USERNAME, CURLOPT_STRING, false },
-	{ "CURLOPT_TLSAUTH_PASSWORD", CURLOPT_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
-	{ "CURLOPT_TLSAUTH_TYPE", CURLOPT_TLSAUTH_TYPE, CURLOPT_STRING, false },
+	{ "CURLOPT_TLSAUTH_USERNAME", NULL, CURLOPT_TLSAUTH_USERNAME, CURLOPT_STRING, false },
+	{ "CURLOPT_TLSAUTH_PASSWORD", NULL, CURLOPT_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
+	{ "CURLOPT_TLSAUTH_TYPE", NULL, CURLOPT_TLSAUTH_TYPE, CURLOPT_STRING, false },
 #endif
 #if LIBCURL_VERSION_NUM >= 0x071900 /* 7.25.0 */
-	{ "CURLOPT_TCP_KEEPALIVE", CURLOPT_TCP_KEEPALIVE, CURLOPT_LONG, false },
-	{ "CURLOPT_TCP_KEEPIDLE", CURLOPT_TCP_KEEPIDLE, CURLOPT_LONG, false },
+	{ "CURLOPT_TCP_KEEPALIVE", NULL, CURLOPT_TCP_KEEPALIVE, CURLOPT_LONG, false },
+	{ "CURLOPT_TCP_KEEPIDLE", NULL, CURLOPT_TCP_KEEPIDLE, CURLOPT_LONG, false },
 #endif
 #if LIBCURL_VERSION_NUM >= 0x072500 /* 7.37.0 */
-	{ "CURLOPT_SSL_VERIFYHOST", CURLOPT_SSL_VERIFYHOST, CURLOPT_LONG, false },
-	{ "CURLOPT_SSL_VERIFYPEER", CURLOPT_SSL_VERIFYPEER, CURLOPT_LONG, false },
+	{ "CURLOPT_SSL_VERIFYHOST", NULL, CURLOPT_SSL_VERIFYHOST, CURLOPT_LONG, false },
+	{ "CURLOPT_SSL_VERIFYPEER", NULL, CURLOPT_SSL_VERIFYPEER, CURLOPT_LONG, false },
 #endif
-	{ "CURLOPT_SSLCERT", CURLOPT_SSLCERT, CURLOPT_STRING, false },
-	{ "CURLOPT_SSLKEY", CURLOPT_SSLKEY, CURLOPT_STRING, false },
+	{ "CURLOPT_SSLCERT", NULL, CURLOPT_SSLCERT, CURLOPT_STRING, false },
+	{ "CURLOPT_SSLKEY", NULL, CURLOPT_SSLKEY, CURLOPT_STRING, false },
 #if LIBCURL_VERSION_NUM >= 0x070903 /* 7.9.3 */
-	{ "CURLOPT_SSLCERTTYPE", CURLOPT_SSLCERTTYPE, CURLOPT_STRING, false },
+	{ "CURLOPT_SSLCERTTYPE", NULL, CURLOPT_SSLCERTTYPE, CURLOPT_STRING, false },
 #endif
 #if LIBCURL_VERSION_NUM >= 0x073400  /* 7.52.0 */
-	{ "CURLOPT_PRE_PROXY", CURLOPT_PRE_PROXY, CURLOPT_STRING, false },
-	{ "CURLOPT_PROXY_CAINFO", CURLOPT_PROXY_TLSAUTH_USERNAME, CURLOPT_STRING, false },
-	{ "CURLOPT_PROXY_TLSAUTH_USERNAME", CURLOPT_PROXY_TLSAUTH_USERNAME, CURLOPT_STRING, false },
-	{ "CURLOPT_PROXY_TLSAUTH_PASSWORD", CURLOPT_PROXY_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
-	{ "CURLOPT_PROXY_TLSAUTH_TYPE", CURLOPT_PROXY_TLSAUTH_TYPE, CURLOPT_STRING, false },
+	{ "CURLOPT_PRE_PROXY", NULL, CURLOPT_PRE_PROXY, CURLOPT_STRING, false },
+	{ "CURLOPT_PROXY_CAINFO", NULL, CURLOPT_PROXY_TLSAUTH_USERNAME, CURLOPT_STRING, false },
+	{ "CURLOPT_PROXY_TLSAUTH_USERNAME", NULL, CURLOPT_PROXY_TLSAUTH_USERNAME, CURLOPT_STRING, false },
+	{ "CURLOPT_PROXY_TLSAUTH_PASSWORD", NULL, CURLOPT_PROXY_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
+	{ "CURLOPT_PROXY_TLSAUTH_TYPE", NULL, CURLOPT_PROXY_TLSAUTH_TYPE, CURLOPT_STRING, false },
 #endif
-	{ NULL, 0, 0, false } /* Array null terminator */
+	{ NULL, NULL, 0, 0, false } /* Array null terminator */
 };
 
 /* Function signatures */
@@ -173,6 +175,7 @@ bool g_use_keepalive;
 int g_timeout_msec;
 
 CURL * g_http_handle = NULL;
+List * g_curl_opts = NIL;
 
 /*
 * Interrupt support is dependent on CURLOPT_XFERINFOFUNCTION which is
@@ -219,6 +222,37 @@ http_interrupt_handler(int sig)
 #endif /* 7.39.0 */
 
 
+#if 0
+static void *
+http_calloc(size_t a, size_t b)
+{
+	return palloc0(a*b);
+}
+
+static void
+http_free(void *a)
+{
+	if (a) pfree(a);
+	return;
+}
+
+static void *
+http_realloc(void *a, size_t sz)
+{
+	if (a && sz) return repalloc(a, sz);
+	else if (a) return a;
+	else return palloc(sz);
+}
+
+static void *
+http_malloc(size_t sz)
+{
+	if (sz) return palloc(sz);
+	else return NULL;
+}
+#endif
+
+
 /* Startup */
 void _PG_init(void)
 {
@@ -248,6 +282,7 @@ void _PG_init(void)
 
 	/* Set up Curl! */
 	curl_global_init(CURL_GLOBAL_ALL);
+	// curl_global_init_mem(CURL_GLOBAL_ALL, http_malloc, http_free, http_realloc, pstrdup, http_calloc);
 
 #if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 	/* Register our interrupt handler (http_handle_interrupt) */
@@ -632,11 +667,48 @@ http_check_curl_version(const curl_version_info_data *version_info)
 	}
 }
 
+static bool
+set_curlopt(CURL* handle, const http_curlopt *opt)
+{
+	CURLcode err = CURLE_OK;
+	char http_error_buffer[CURL_ERROR_SIZE];
+
+	/* Argument is a string */
+	if (opt->curlopt_type == CURLOPT_STRING)
+	{
+		err = curl_easy_setopt(handle, opt->curlopt, opt->curlopt_val);
+		elog(DEBUG2, "pgsql-http: set '%s' to value '%s', return value = %d", opt->curlopt_str, opt->curlopt_val, err);
+	}
+	/* Argument is a long */
+	else if (opt->curlopt_type == CURLOPT_LONG)
+	{
+		long value_long = strtol(opt->curlopt_val, NULL, 10);
+		if ( errno == EINVAL || errno == ERANGE )
+			elog(ERROR, "invalid integer provided for '%s'", opt->curlopt_str);
+
+		err = curl_easy_setopt(handle, opt->curlopt, value_long);
+		elog(DEBUG2, "pgsql-http: set '%s' to value '%ld', return value = %d", opt->curlopt_str, value_long, err);
+	}
+	else
+	{
+		elog(ERROR, "invalid curlopt_type");
+	}
+
+	if ( err != CURLE_OK )
+	{
+		http_error(err, http_error_buffer);
+		return false;
+	}
+	return true;
+}
+
 /* Check/create the global CURL* handle */
 static CURL*
 http_get_handle()
 {
+	http_curlopt opt;
 	CURL *handle = g_http_handle;
+	int i = 0;
 
 	/* Initialize the global handle if needed */
 	if (!handle)
@@ -650,6 +722,16 @@ http_get_handle()
 	if (!handle)
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
 
+	/* Persist any options that have been set on the handle this session */
+	while(1)
+	{
+		opt = settable_curlopts[i++];
+		if (!opt.curlopt_str) break;
+		/* Option value is already set */
+		if (opt.curlopt_val)
+			set_curlopt(handle, &opt);
+	}
+
 	g_http_handle = handle;
 	return handle;
 }
@@ -662,9 +744,19 @@ Datum http_reset_curlopt(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(http_reset_curlopt);
 Datum http_reset_curlopt(PG_FUNCTION_ARGS)
 {
+	int i = 0;
 	/* Set up global HTTP handle */
 	g_http_handle = http_get_handle();
 	curl_easy_reset(g_http_handle);
+
+	while(1)
+	{
+		http_curlopt *opt = settable_curlopts + i++;
+		if (!opt->curlopt_str) break;
+		if (opt->curlopt_val) pfree(opt->curlopt_val);
+		opt->curlopt_val = NULL;
+	}
+
 	PG_RETURN_BOOL(true);
 }
 
@@ -695,45 +787,18 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 	curlopt = text_to_cstring(curlopt_txt);
 	value = text_to_cstring(value_txt);
 
-	while (1)
+	while(1)
 	{
-		http_curlopt opt = settable_curlopts[i++];
-		if (!opt.curlopt_str) /* Terminate at end of array */
-			break;
-		if (strcasecmp(opt.curlopt_str, curlopt) == 0)
+		http_curlopt *opt = settable_curlopts + i++;
+		if (!opt->curlopt_str) break;
+		if (strcasecmp(opt->curlopt_str, curlopt) == 0)
 		{
-			CURLcode err;
-			char http_error_buffer[CURL_ERROR_SIZE];
-
-			/* Argument is a string */
-			if (opt.curlopt_type == CURLOPT_STRING)
-			{
-				err = curl_easy_setopt(g_http_handle, opt.curlopt, value);
-				elog(DEBUG2, "pgsql-http: set '%s' to value '%s', return value = %d", opt.curlopt_str, value, err);
-			}
-			/* Argument is a long */
-			else if (opt.curlopt_type == CURLOPT_LONG)
-			{
-				long value_long = strtol(value, NULL, 10);
-				if ( errno == EINVAL || errno == ERANGE )
-					elog(ERROR, "invalid integer provided for '%s'", opt.curlopt_str);
-
-				err = curl_easy_setopt(g_http_handle, opt.curlopt, value_long);
-				elog(DEBUG2, "pgsql-http: set '%s' to value '%ld', return value = %d", opt.curlopt_str, value_long, err);
-			}
-			else
-			{
-				elog(ERROR, "invalid curlopt_type");
-			}
-
-			if ( err != CURLE_OK )
-			{
-				http_error(err, http_error_buffer);
-				PG_RETURN_BOOL(false);
-			}
-			PG_RETURN_BOOL(true);
+			if (opt->curlopt_val) pfree(opt->curlopt_val);
+			opt->curlopt_val = MemoryContextStrdup(CacheMemoryContext, value);
+			PG_RETURN_BOOL(set_curlopt(g_http_handle, opt));
 		}
 	}
+
 	elog(ERROR, "curl option '%s' is not available for run-time configuration", curlopt);
 	PG_RETURN_BOOL(false);
 }

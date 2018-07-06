@@ -81,3 +81,14 @@ SELECT
   headers.value AS length_headers
 FROM http, headers
 WHERE field = 'Content-Length';
+
+-- Alter options and and reset them and throw errors
+SELECT http_set_curlopt('CURLOPT_PROXY', '127.0.0.1');
+-- Error because proxy is not there
+SELECT status FROM http_get('http://httpbin.org/status/555');
+-- Still an error
+SELECT status FROM http_get('http://httpbin.org/status/555');
+SELECT http_reset_curlopt();
+-- Now it should work
+SELECT status FROM http_get('http://httpbin.org/status/555');
+

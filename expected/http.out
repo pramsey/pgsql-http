@@ -125,3 +125,29 @@ WHERE field = 'Content-Length';
  image/png    |          8090 | 8090
 (1 row)
 
+-- Alter options and and reset them and throw errors
+SELECT http_set_curlopt('CURLOPT_PROXY', '127.0.0.1');
+ http_set_curlopt 
+------------------
+ t
+(1 row)
+
+-- Error because proxy is not there
+SELECT status FROM http_get('http://httpbin.org/status/555');
+ERROR:  Failed to connect to 127.0.0.1 port 1080: Connection refused
+-- Still an error
+SELECT status FROM http_get('http://httpbin.org/status/555');
+ERROR:  Failed to connect to 127.0.0.1 port 1080: Connection refused
+SELECT http_reset_curlopt();
+ http_reset_curlopt 
+--------------------
+ t
+(1 row)
+
+-- Now it should work
+SELECT status FROM http_get('http://httpbin.org/status/555');
+ status 
+--------
+    555
+(1 row)
+
