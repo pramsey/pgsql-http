@@ -778,6 +778,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 	int i = 0;
 	char *curlopt, *value;
 	text *curlopt_txt, *value_txt;
+	CURL *handle;
 
 	/* Version check */
 	http_check_curl_version(curl_version_info(CURLVERSION_NOW));
@@ -787,7 +788,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 		PG_RETURN_BOOL(false);
 
 	/* Set up global HTTP handle */
-	g_http_handle = http_get_handle();
+	handle = http_get_handle();
 
 	/* Read arguments */
 	curlopt_txt = PG_GETARG_TEXT_P(0);
@@ -803,7 +804,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 		{
 			if (opt->curlopt_val) pfree(opt->curlopt_val);
 			opt->curlopt_val = MemoryContextStrdup(CacheMemoryContext, value);
-			PG_RETURN_BOOL(set_curlopt(g_http_handle, opt));
+			PG_RETURN_BOOL(set_curlopt(handle, opt));
 		}
 	}
 
