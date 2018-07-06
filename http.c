@@ -48,11 +48,13 @@
 #include <catalog/pg_type.h>
 #include <catalog/dependency.h>
 #include <commands/extension.h>
+
 #include <lib/stringinfo.h>
 #include <mb/pg_wchar.h>
 #include <nodes/pg_list.h>
 #include <utils/array.h>
 #include <utils/builtins.h>
+#include <utils/catcache.h>
 #include <utils/lsyscache.h>
 #include <utils/syscache.h>
 #include <utils/typcache.h>
