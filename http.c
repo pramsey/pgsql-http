@@ -472,7 +472,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 	iterator = array_create_iterator(array, 0);
 #endif
 
-	while( array_iterate(iterator, &value, &isnull) )
+	while (array_iterate(iterator, &value, &isnull))
 	{
 		HeapTupleHeader rec;
 		HeapTupleData tuple;
@@ -720,12 +720,18 @@ http_get_handle()
 		/* User can over-ride with http_set_curlopt() if they wish */
 		curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
 	}
+	/* Always reset because we're going to infull the user */
+	/* set options down below */
+	else
+	{
+		curl_easy_reset(handle);
+	}
 
 	if (!handle)
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
 
-	/* Persist any options that have been set on the handle this session */
-	while(1)
+	/* Bring in any options the users has set this session */
+	while (1)
 	{
 		opt = settable_curlopts[i++];
 		if (!opt.curlopt_str) break;
@@ -748,10 +754,10 @@ Datum http_reset_curlopt(PG_FUNCTION_ARGS)
 {
 	int i = 0;
 	/* Set up global HTTP handle */
-	g_http_handle = http_get_handle();
-	curl_easy_reset(g_http_handle);
+	CURL * handle = http_get_handle();
+	curl_easy_reset(handle);
 
-	while(1)
+	while (1)
 	{
 		http_curlopt *opt = settable_curlopts + i++;
 		if (!opt->curlopt_str) break;
@@ -789,7 +795,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 	curlopt = text_to_cstring(curlopt_txt);
 	value = text_to_cstring(value_txt);
 
-	while(1)
+	while (1)
 	{
 		http_curlopt *opt = settable_curlopts + i++;
 		if (!opt->curlopt_str) break;
