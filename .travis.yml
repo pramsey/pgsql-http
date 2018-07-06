@@ -14,11 +14,11 @@ addons:
 
 compiler:
   - gcc
-  - clang
 
 env:
   - PG_VERSION=9.6
   - PG_VERSION=10
+  - PG_VERSION=11
 
 before_script:
   - sudo /etc/init.d/postgresql stop
