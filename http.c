@@ -223,34 +223,39 @@ http_interrupt_handler(int sig)
 }
 #endif /* 7.39.0 */
 
-
-#if 0
+#undef HTTP_MEM_CALLBACKS
+#ifdef HTTP_MEM_CALLBACKS
 static void *
 http_calloc(size_t a, size_t b)
 {
-	return palloc0(a*b);
+	if (a && b)
+		return palloc0(a*b);
+	else
+		return NULL;
 }
 
 static void
 http_free(void *a)
 {
-	if (a) pfree(a);
-	return;
+	if (a) 
+		pfree(a);
 }
 
 static void *
 http_realloc(void *a, size_t sz)
 {
-	if (a && sz) return repalloc(a, sz);
-	else if (a) return a;
-	else return palloc(sz);
+	if (a && sz) 
+		return repalloc(a, sz);
+	else if (sz) 
+		return palloc(sz);
+	else 
+		return a;
 }
 
 static void *
 http_malloc(size_t sz)
 {
-	if (sz) return palloc(sz);
-	else return NULL;
+	return sz ? palloc(sz) : NULL;
 }
 #endif
 
@@ -281,10 +286,15 @@ void _PG_init(void)
 							NULL,
 							NULL,
 							NULL);
-
+	
+#ifdef HTTP_MEM_CALLBACKS
+	/* Use PgSQL memory management in Curl */
+	curl_global_init_mem(CURL_GLOBAL_ALL, http_malloc, http_free, http_realloc, pstrdup, http_calloc);
+#else
 	/* Set up Curl! */
 	curl_global_init(CURL_GLOBAL_ALL);
-	// curl_global_init_mem(CURL_GLOBAL_ALL, http_malloc, http_free, http_realloc, pstrdup, http_calloc);
+#endif
+	
 
 #if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 	/* Register our interrupt handler (http_handle_interrupt) */
@@ -803,7 +813,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 		if (strcasecmp(opt->curlopt_str, curlopt) == 0)
 		{
 			if (opt->curlopt_val) pfree(opt->curlopt_val);
-			opt->curlopt_val = MemoryContextStrdup(CacheMemoryContext, value);
+			opt->curlopt_val = MemoryContextStrdup(TopMemoryContext, value);
 			PG_RETURN_BOOL(set_curlopt(handle, opt));
 		}
 	}
@@ -912,6 +922,9 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Set up global HTTP handle */
 	g_http_handle = http_get_handle();
 
+	/* Set up the error buffer */
+	CURL_SETOPT(g_http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
+
 	/* Set the target URL */
 	CURL_SETOPT(g_http_handle, CURLOPT_URL, uri);
 
@@ -933,9 +946,6 @@ Datum http_request(PG_FUNCTION_ARGS)
 		/* Keep sockets from being held open */
 		CURL_SETOPT(g_http_handle, CURLOPT_FORBID_REUSE, 1);
 	}
-
-	/* Set up the error buffer */
-	CURL_SETOPT(g_http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
 
 	/* Set up the write-back function */
 	CURL_SETOPT(g_http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
