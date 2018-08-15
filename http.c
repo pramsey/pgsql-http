@@ -813,7 +813,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 		if (strcasecmp(opt->curlopt_str, curlopt) == 0)
 		{
 			if (opt->curlopt_val) pfree(opt->curlopt_val);
-			opt->curlopt_val = MemoryContextStrdup(TopMemoryContext, value);
+			opt->curlopt_val = MemoryContextStrdup(CacheMemoryContext, value);
 			PG_RETURN_BOOL(set_curlopt(handle, opt));
 		}
 	}
