@@ -228,7 +228,7 @@ http_interrupt_handler(int sig)
 static void *
 http_calloc(size_t a, size_t b)
 {
-	if (a && b)
+	if (a>0 && b>0)
 		return palloc0(a*b);
 	else
 		return NULL;
@@ -423,7 +423,8 @@ header_tuple(TupleDesc header_tuple_desc, const char *field, const char *value)
 /**
 * Our own implementation of strcasestr.
 */
-static char *http_strcasestr(const char *s, const char *find)
+static char *
+http_strcasestr(const char *s, const char *find)
 {
 	char c, sc;
 	size_t len;
@@ -561,7 +562,8 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 * of the extension, but share the same name as the relation
 * of interest.
 */
-static TupleDesc typname_get_tupledesc(const char *extname, const char *typname)
+static TupleDesc
+typname_get_tupledesc(const char *extname, const char *typname)
 {
 	Oid extoid = get_extension_oid(extname, true);
 	ListCell *l;
@@ -715,7 +717,7 @@ set_curlopt(CURL* handle, const http_curlopt *opt)
 }
 
 /* Check/create the global CURL* handle */
-static CURL*
+static CURL *
 http_get_handle()
 {
 	http_curlopt opt;
@@ -740,7 +742,7 @@ http_get_handle()
 	if (!handle)
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
 
-	/* Bring in any options the users has set this session */
+	/* Bring in any options the user has set this session */
 	while (1)
 	{
 		opt = settable_curlopts[i++];
