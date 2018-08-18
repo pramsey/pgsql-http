@@ -523,7 +523,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 		/* server to deal with. */
 		if ( ! nulls[HEADER_FIELD] )
 		{
-			char buffer[1024];
+			char buffer[4096];
 			char *header_val;
 			char *header_fld = TextDatumGetCString(values[HEADER_FIELD]);
 
