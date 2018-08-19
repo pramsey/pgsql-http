@@ -546,7 +546,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 				elog(DEBUG2, "pgsql-http: optional request header '%s'", buffer);
 				headers = curl_slist_append(headers, buffer);
 			} else {
-				elog(DEBUG2, "pgsql-http: Cannot palloc %i", total_len);
+				elog(ERROR, "pgsql-http: palloc(%i) failure", total_len);
 			}
 			pfree(header_fld);
 			pfree(header_val);
