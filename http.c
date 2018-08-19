@@ -523,7 +523,8 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 		/* server to deal with. */
 		if ( ! nulls[HEADER_FIELD] )
 		{
-			char buffer[4096];
+			int total_len = 0;
+			char  * buffer = 0;
 			char *header_val;
 			char *header_fld = TextDatumGetCString(values[HEADER_FIELD]);
 
@@ -538,10 +539,15 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 				header_val = pstrdup("");
 			else
 				header_val = TextDatumGetCString(values[HEADER_VALUE]);
-
-			snprintf(buffer, sizeof(buffer), "%s: %s", header_fld, header_val);
-			elog(DEBUG2, "pgsql-http: optional request header '%s'", buffer);
-			headers = curl_slist_append(headers, buffer);
+			total_len = strlen(header_val) + strlen(header_fld) + 16;
+			buffer = palloc(total_len);
+			if (buffer){
+				snprintf(buffer, sizeof(buffer), "%s: %s", header_fld, header_val);
+				elog(DEBUG2, "pgsql-http: optional request header '%s'", buffer);
+				headers = curl_slist_append(headers, buffer);
+			} else {
+				elog(DEBUG2, "pgsql-http: Cannot palloc %i", total_len);
+			}
 			pfree(header_fld);
 			pfree(header_val);
 		}
