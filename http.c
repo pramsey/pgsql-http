@@ -542,7 +542,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 			total_len = strlen(header_val) + strlen(header_fld) + 16;
 			buffer = palloc(total_len);
 			if (buffer){
-				snprintf(buffer, sizeof(buffer), "%s: %s", header_fld, header_val);
+				snprintf(buffer, total_len, "%s: %s", header_fld, header_val);
 				elog(DEBUG2, "pgsql-http: optional request header '%s'", buffer);
 				headers = curl_slist_append(headers, buffer);
 			} else {
