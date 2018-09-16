@@ -539,13 +539,17 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 				header_val = pstrdup("");
 			else
 				header_val = TextDatumGetCString(values[HEADER_VALUE]);
-			total_len = strlen(header_val) + strlen(header_fld) + 16;
+			total_len = strlen(header_val) + strlen(header_fld) + sizeof(char);
 			buffer = palloc(total_len);
-			if (buffer){
+			if (buffer)
+			{
 				snprintf(buffer, total_len, "%s: %s", header_fld, header_val);
 				elog(DEBUG2, "pgsql-http: optional request header '%s'", buffer);
 				headers = curl_slist_append(headers, buffer);
-			} else {
+				pfree(buffer);
+			} 
+			else 
+			{
 				elog(ERROR, "pgsql-http: palloc(%i) failure", total_len);
 			}
 			pfree(header_fld);
