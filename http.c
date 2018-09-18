@@ -523,8 +523,8 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 		/* server to deal with. */
 		if ( ! nulls[HEADER_FIELD] )
 		{
-			int total_len = 0;
-			char  * buffer = 0;
+			size_t total_len = 0;
+			char  *buffer = NULL;
 			char *header_val;
 			char *header_fld = TextDatumGetCString(values[HEADER_FIELD]);
 
@@ -550,7 +550,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 			} 
 			else 
 			{
-				elog(ERROR, "pgsql-http: palloc(%i) failure", total_len);
+				elog(ERROR, "pgsql-http: palloc(%zu) failure", total_len);
 			}
 			pfree(header_fld);
 			pfree(header_val);
@@ -602,6 +602,9 @@ typname_get_tupledesc(const char *extname, const char *typname)
 	elog(ERROR, "could not lookup '%s' tuple desc", typname);
 }
 
+
+#define RVSZ 512 /* Max length of header element */
+
 /**
 * Convert a string of headers separated by newlines/CRs into an
 * array of http_header tuples.
@@ -610,8 +613,8 @@ static ArrayType *
 header_string_to_array(StringInfo si)
 {
 	/* Array building */
-	int arr_nelems = 0;
-	int arr_elems_size = 8;
+	size_t arr_nelems = 0;
+	size_t arr_elems_size = 8;
 	Datum *arr_elems = palloc0(arr_elems_size*sizeof(Datum));
 	Oid elem_type;
 	int16 elem_len;
@@ -626,9 +629,8 @@ header_string_to_array(StringInfo si)
 	regex_t regex;
 	regmatch_t pmatch[3];
 	int reti;
-	static int rvsz = 256;
-	char rv1[rvsz];
-	char rv2[rvsz];
+	char rv1[RVSZ];
+	char rv2[RVSZ];
 
 	/* Compile the regular expression */
 	reti = regcomp(&regex, regex_pattern, REG_ICASE | REG_EXTENDED | REG_NEWLINE );
@@ -654,9 +656,9 @@ header_string_to_array(StringInfo si)
 		int eo2 = pmatch[2].rm_eo;
 
 		/* Copy the matched portions out of the string */
-		memcpy(rv1, si->data+si->cursor+so1, eo1-so1 < rvsz ? eo1-so1 : rvsz);
+		memcpy(rv1, si->data+si->cursor+so1, eo1-so1 < RVSZ ? eo1-so1 : RVSZ);
 		rv1[eo1-so1] = '\0';
-		memcpy(rv2, si->data+si->cursor+so2, eo2-so2 < rvsz ? eo2-so2 : rvsz);
+		memcpy(rv2, si->data+si->cursor+so2, eo2-so2 < RVSZ ? eo2-so2 : RVSZ);
 		rv2[eo2-so2] = '\0';
 
 		/* Move forward for next match */
@@ -732,7 +734,7 @@ http_get_handle()
 {
 	http_curlopt opt;
 	CURL *handle = g_http_handle;
-	int i = 0;
+	size_t i = 0;
 
 	/* Initialize the global handle if needed */
 	if (!handle)
@@ -774,7 +776,7 @@ Datum http_reset_curlopt(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(http_reset_curlopt);
 Datum http_reset_curlopt(PG_FUNCTION_ARGS)
 {
-	int i = 0;
+	size_t i = 0;
 	/* Set up global HTTP handle */
 	CURL * handle = http_get_handle();
 	curl_easy_reset(handle);
@@ -797,7 +799,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(http_set_curlopt);
 Datum http_set_curlopt(PG_FUNCTION_ARGS)
 {
-	int i = 0;
+	size_t i = 0;
 	char *curlopt, *value;
 	text *curlopt_txt, *value_txt;
 	CURL *handle;
@@ -1270,7 +1272,8 @@ Datum urlencode(PG_FUNCTION_ARGS)
 	text *txt = PG_GETARG_TEXT_P(0); /* Declare strict, so no test for NULL input */
 	size_t txt_size = VARSIZE(txt) - VARHDRSZ;
 	char *str_in, *str_out, *ptr;
-	int i, rv;
+	size_t i;
+	int rv;
 
 	/* Point into the string */
 	str_in = VARDATA(txt);
