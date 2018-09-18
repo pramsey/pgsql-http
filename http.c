@@ -539,7 +539,7 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 				header_val = pstrdup("");
 			else
 				header_val = TextDatumGetCString(values[HEADER_VALUE]);
-			total_len = strlen(header_val) + strlen(header_fld) + sizeof(char);
+			total_len = strlen(header_val) + strlen(header_fld) + sizeof(char) + sizeof(": ");
 			buffer = palloc(total_len);
 			if (buffer)
 			{
