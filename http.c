@@ -28,7 +28,7 @@
  ***********************************************************************/
 
 /* Constants */
-#define HTTP_VERSION "1.2.4"
+#define HTTP_VERSION "1.3.0"
 #define HTTP_ENCODING "gzip"
 #define CURL_MIN_VERSION 0x071400 /* 7.20.0 */
 
@@ -80,7 +80,8 @@ typedef enum {
 	HTTP_POST,
 	HTTP_DELETE,
 	HTTP_PUT,
-	HTTP_HEAD
+	HTTP_HEAD,
+	HTTP_PATCH
 } http_method;
 
 /* Components (and postitions) of the http_request tuple type */
@@ -392,6 +393,8 @@ request_type(const char *method)
 		return HTTP_DELETE;
 	else if ( strcasecmp(method, "HEAD") == 0 )
 		return HTTP_HEAD;
+	else if ( strcasecmp(method, "PATCH") == 0 )
+		return HTTP_PATCH;
 	else
 		return HTTP_GET;
 }
@@ -1045,8 +1048,10 @@ Datum http_request(PG_FUNCTION_ARGS)
 			}
 			CURL_SETOPT(g_http_handle, CURLOPT_POSTFIELDS, text_to_cstring(content_text));
 		}
-		else if ( method == HTTP_PUT )
+		else if ( method == HTTP_PUT || method == HTTP_PATCH )
 		{
+			if ( method == HTTP_PATCH )
+				CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, "PATCH");
 			initStringInfo(&si_read);
 			appendBinaryStringInfo(&si_read, VARDATA(content_text), content_size);
 			CURL_SETOPT(g_http_handle, CURLOPT_UPLOAD, 1);

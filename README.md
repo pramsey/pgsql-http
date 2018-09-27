@@ -71,6 +71,14 @@ This extension is for that.
         200 | application/json | some text
 
 
+    > SELECT status, content_type, content::json->>'data' AS data
+      FROM http_patch('http://httpbin.org/patch', '{"this":"that"}', 'application/json');
+
+     status |   content_type   |   data
+    --------+------------------+-----------
+        200 | application/json | some text
+
+
     > SELECT status, content_type, content::json->>'url' AS url
       FROM http_delete('http://httpbin.org/delete');
 
