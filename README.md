@@ -74,9 +74,9 @@ This extension is for that.
     > SELECT status, content_type, content::json->>'data' AS data
       FROM http_patch('http://httpbin.org/patch', '{"this":"that"}', 'application/json');
 
-     status |   content_type   |   data
-    --------+------------------+-----------
-        200 | application/json | some text
+     status |   content_type   |      data
+    --------+------------------+------------------
+        200 | application/json | '{"this":"that"}'
 
 
     > SELECT status, content_type, content::json->>'url' AS url
