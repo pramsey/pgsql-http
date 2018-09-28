@@ -45,6 +45,14 @@ content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_put('http://httpbin.org/anything?foo=bar','payload','text/plain');
 
+-- PATCH
+SELECT status,
+content::json->'data' AS data,
+content::json->'args' AS args,
+content::json->'url' AS url,
+content::json->'method' AS method
+FROM http_patch('http://httpbin.org/anything?foo=bar','{"this":"that"}','application/json');
+
 -- POST
 SELECT status,
 content::json->'data' AS data,

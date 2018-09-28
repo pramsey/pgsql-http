@@ -78,6 +78,20 @@ FROM http_put('http://httpbin.org/anything?foo=bar','payload','text/plain');
         |           |   }              |                                       | 
 (1 row)
 
+-- PATCH
+SELECT status,
+content::json->'data' AS data,
+content::json->'args' AS args,
+content::json->'url' AS url,
+content::json->'method' AS method
+FROM http_patch('http://httpbin.org/anything?foo=bar','{"this":"that"}','application/json');
+ status |         data          |       args       |                  url                  | method  
+--------+-----------------------+------------------+---------------------------------------+---------
+    200 | "{\"this\":\"that\"}" | {               +| "http://httpbin.org/anything?foo=bar" | "PATCH"
+        |                       |     "foo": "bar"+|                                       | 
+        |                       |   }              |                                       | 
+(1 row)
+
 -- POST
 SELECT status,
 content::json->'data' AS data,
