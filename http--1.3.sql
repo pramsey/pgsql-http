@@ -7,6 +7,7 @@ CHECK (
     VALUE ILIKE 'post' OR
     VALUE ILIKE 'put' OR
     VALUE ILIKE 'delete' OR
+    VALUE ILIKE 'patch' OR
     VALUE ILIKE 'head'
 );
 
@@ -68,6 +69,11 @@ CREATE OR REPLACE FUNCTION http_post(uri VARCHAR, content VARCHAR, content_type 
 CREATE OR REPLACE FUNCTION http_put(uri VARCHAR, content VARCHAR, content_type VARCHAR)
     RETURNS http_response
     AS $$ SELECT http(('PUT', $1, NULL, $3, $2)::http_request) $$
+    LANGUAGE 'sql';
+
+CREATE OR REPLACE FUNCTION http_patch(uri VARCHAR, content VARCHAR, content_type VARCHAR)
+    RETURNS http_response
+    AS $$ SELECT http(('PATCH', $1, NULL, $3, $2)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_delete(uri VARCHAR)
