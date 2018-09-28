@@ -10,90 +10,101 @@ This extension is for that.
 
 ## Examples
 
-    > SELECT urlencode('my special string''s & things?');
-
-                  urlencode
-    -------------------------------------
-     my+special+string%27s+%26+things%3F
-    (1 row)
-
-
-    > SELECT content FROM http_get('http://httpbin.org/ip');
-
-               content
-    -----------------------------
-     {"origin":"24.69.186.43"}                          +
-    (1 row)
-
-
-    > SELECT content::json->'headers'->>'Authorization' FROM http((
-                'GET',
-                 'http://httpbin.org/headers',
-                 ARRAY[http_header('Authorization','Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9')],
-                 NULL,
-                 NULL
-              )::http_request)
-
-                       content
-    ----------------------------------------------
-     Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
-    (1 row)
-
-    > SELECT status, content_type FROM http_get('http://httpbin.org/');
-
-     status |       content_type
-    --------+--------------------------
-        200 | text/html; charset=utf-8
-    (1 row)
-
-
-    > SELECT (unnest(headers)).* FROM http_get('http://httpbin.org/');
-
-                  field               |             value
-    ----------------------------------+-------------------------------
-     Connection                       | close
-     Server                           | meinheld/0.6.1
-     Date                             | Tue, 09 Jan 2018 18:40:30 GMT
-     Content-Type                     | text/html; charset=utf-8
-     Content-Length                   | 13011
-     Access-Control-Allow-Origin      | *
-     Access-Control-Allow-Credentials | true
-     X-Powered-By                     | Flask
-     X-Processed-Time                 | 0.0208520889282
-     Via                              | 1.1 vegur
-
-
-    > SELECT status, content_type, content::json->>'data' AS data
-      FROM http_put('http://httpbin.org/put', 'some text', 'text/plain');
-
-     status |   content_type   |   data
-    --------+------------------+-----------
-        200 | application/json | some text
-
-
-    > SELECT status, content_type, content::json->>'data' AS data
-      FROM http_patch('http://httpbin.org/patch', '{"this":"that"}', 'application/json');
-
-     status |   content_type   |      data
-    --------+------------------+------------------
-        200 | application/json | '{"this":"that"}'
-
-
-    > SELECT status, content_type, content::json->>'url' AS url
-      FROM http_delete('http://httpbin.org/delete');
-
-     status |   content_type   |            url
-    --------+------------------+---------------------------
-        200 | application/json | http://httpbin.org/delete
-
+```sql
+SELECT urlencode('my special string''s & things?');
+```
+```
+              urlencode
+-------------------------------------
+ my+special+string%27s+%26+things%3F
+(1 row)
+```
+```sql
+SELECT content FROM http_get('http://httpbin.org/ip');
+```
+```
+           content
+-----------------------------
+ {"origin":"24.69.186.43"}                          +
+(1 row)
+```
+```sql
+SELECT content::json->'headers'->>'Authorization' FROM http((
+          'GET',
+           'http://httpbin.org/headers',
+           ARRAY[http_header('Authorization','Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9')],
+           NULL,
+           NULL
+        )::http_request)
+```
+```
+                   content
+----------------------------------------------
+ Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
+(1 row)
+```
+```sql
+SELECT status, content_type FROM http_get('http://httpbin.org/');
+```
+```
+ status |       content_type
+--------+--------------------------
+    200 | text/html; charset=utf-8
+(1 row)
+```
+```sql
+SELECT (unnest(headers)).* FROM http_get('http://httpbin.org/');
+```
+```
+              field               |             value
+----------------------------------+-------------------------------
+ Connection                       | close
+ Server                           | meinheld/0.6.1
+ Date                             | Tue, 09 Jan 2018 18:40:30 GMT
+ Content-Type                     | text/html; charset=utf-8
+ Content-Length                   | 13011
+ Access-Control-Allow-Origin      | *
+ Access-Control-Allow-Credentials | true
+ X-Powered-By                     | Flask
+ X-Processed-Time                 | 0.0208520889282
+ Via                              | 1.1 vegur
+```
+```sql
+SELECT status, content_type, content::json->>'data' AS data
+  FROM http_put('http://httpbin.org/put', 'some text', 'text/plain');
+```
+```
+ status |   content_type   |   data
+--------+------------------+-----------
+    200 | application/json | some text
+```
+```sql
+SELECT status, content_type, content::json->>'data' AS data
+  FROM http_patch('http://httpbin.org/patch', '{"this":"that"}', 'application/json');
+```
+```
+ status |   content_type   |      data
+--------+------------------+------------------
+    200 | application/json | '{"this":"that"}'
+```
+```sql
+SELECT status, content_type, content::json->>'url' AS url
+  FROM http_delete('http://httpbin.org/delete');
+```
+```
+ status |   content_type   |            url
+--------+------------------+---------------------------
+    200 | application/json | http://httpbin.org/delete
+```
 
 To POST to a URL using a data payload instead of parameters embedded in the URL, use the `application/x-www-form-urlencoded` content type.
 
-    SELECT status, content::json->>'form'
-      FROM http_post('http://httpbin.org/post',
-                     'myvar=myval&foo=bar',
-                     'application/x-www-form-urlencoded');
-
+```sql
+SELECT status, content::json->>'form'
+  FROM http_post('http://httpbin.org/post',
+                 'myvar=myval&foo=bar',
+                 'application/x-www-form-urlencoded');
+```
 
 Remember to [URL encode](http://en.wikipedia.org/wiki/Percent-encoding) content that includes any "special" characters (really, anything other than a-z and 0-9).
 
@@ -126,9 +137,9 @@ WHERE field = 'Content-Length';
 --------------+---------------+----------------
  image/png    |          8090 | 8090
 ```
-
 To access only the headers you can do a HEAD-Request. This will not follow redirections.
 
+```sql
     SELECT
         http.status,
         headers.value AS location
@@ -138,11 +149,12 @@ To access only the headers you can do a HEAD-Request. This will not follow redir
             FROM unnest(http.headers)
             WHERE field = 'Location') AS headers
             ON true;
-
+```
+```
      status |                         location
     --------+-----------------------------------------------------------
         302 | http://www.google.ch/?gfe_rd=cr&ei=ACESWLy_KuvI8zeghL64Ag
-
+```
 ## Concepts
 
 Every HTTP call is a made up of an `http_request` and an `http_response`.
@@ -220,7 +232,9 @@ Select [CURL options](https://curl.haxx.se/libcurl/c/curl_easy_setopt.html) are 
 
 For example,
 
-    SELECT http_set_curlopt('CURLOPT_PROXYPORT', '12345');
+```sql
+SELECT http_set_curlopt('CURLOPT_PROXYPORT', '12345');
+```
 
 Will set the proxy port option for the lifetime of the database connection. You can reset all CURL options to their defaults using the `http_reset_curlopt()` function.
 
