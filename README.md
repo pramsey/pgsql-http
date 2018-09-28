@@ -97,30 +97,35 @@ To POST to a URL using a data payload instead of parameters embedded in the URL,
 
 Remember to [URL encode](http://en.wikipedia.org/wiki/Percent-encoding) content that includes any "special" characters (really, anything other than a-z and 0-9).
 
-    SELECT status, content::json->>'form'
-      FROM http_post('http://httpbin.org/post',
-                     'myvar=' || urlencode('my special string & things?'),
-                     'application/x-www-form-urlencoded');
+```sql
+SELECT status, content::json->>'form'
+  FROM http_post('http://httpbin.org/post',
+                 'myvar=' || urlencode('my special string & things?'),
+                 'application/x-www-form-urlencoded');
+```
 
 To access binary content, you must coerce the content from the default `varchar` representation to a `bytea` representation using the `textsend` function. Using the default `varchar::bytea` cast will not work, as the cast will stop the first time it hits a zero-valued byte (common in binary data).
 
-    WITH
-      http AS (
-        SELECT * FROM http_get('http://httpbin.org/image/png')
-      ),
-      headers AS (
-        SELECT (unnest(headers)).* FROM http
-      )
-    SELECT
-      http.content_type,
-      length(textsend(http.content)) AS length_binary,
-      headers.value AS length_headers
-    FROM http, headers
-    WHERE field = 'Content-Length';
-
-     content_type | length_binary | length_headers
-    --------------+---------------+----------------
-     image/png    |          8090 | 8090
+```sql
+WITH
+  http AS (
+    SELECT * FROM http_get('http://httpbin.org/image/png')
+  ),
+  headers AS (
+    SELECT (unnest(headers)).* FROM http
+  )
+SELECT
+  http.content_type,
+  length(textsend(http.content)) AS length_binary,
+  headers.value AS length_headers
+FROM http, headers
+WHERE field = 'Content-Length';
+```
+```
+ content_type | length_binary | length_headers
+--------------+---------------+----------------
+ image/png    |          8090 | 8090
+```
 
 To access only the headers you can do a HEAD-Request. This will not follow redirections.
 
