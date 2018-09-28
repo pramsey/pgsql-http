@@ -140,20 +140,20 @@ WHERE field = 'Content-Length';
 To access only the headers you can do a HEAD-Request. This will not follow redirections.
 
 ```sql
-    SELECT
-        http.status,
-        headers.value AS location
-    FROM
-        http_head('http://google.com') AS http
-        LEFT OUTER JOIN LATERAL (SELECT value
-            FROM unnest(http.headers)
-            WHERE field = 'Location') AS headers
-            ON true;
+SELECT
+    http.status,
+    headers.value AS location
+FROM
+    http_head('http://google.com') AS http
+    LEFT OUTER JOIN LATERAL (SELECT value
+        FROM unnest(http.headers)
+        WHERE field = 'Location') AS headers
+        ON true;
 ```
 ```
-     status |                         location
-    --------+-----------------------------------------------------------
-        302 | http://www.google.ch/?gfe_rd=cr&ei=ACESWLy_KuvI8zeghL64Ag
+ status |                         location
+--------+-----------------------------------------------------------
+    302 | http://www.google.ch/?gfe_rd=cr&ei=ACESWLy_KuvI8zeghL64Ag
 ```
 ## Concepts
 
