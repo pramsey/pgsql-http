@@ -281,7 +281,7 @@ void _PG_init(void)
 							"request completion timeout in milliseconds",
 							NULL,
 							&g_timeout_msec,
-							5000,
+							0,
 							0,
 							INT_MAX,
 							PGC_USERSET,
@@ -745,9 +745,6 @@ http_get_handle()
 	if (!handle)
 	{
 		handle = curl_easy_init();
-		/* Always want a default fast (1 second) connection timeout */
-		/* User can over-ride with http_set_curlopt() if they wish */
-		curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
 	}
 	/* Always reset because we're going to infull the user */
 	/* set options down below */
@@ -755,6 +752,11 @@ http_get_handle()
 	{
 		curl_easy_reset(handle);
 	}
+
+	/* Always want a default fast (1 second) connection timeout */
+	/* User can over-ride with http_set_curlopt() if they wish */
+	curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
+	curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 5000);
 
 	if (!handle)
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
@@ -786,6 +788,7 @@ Datum http_reset_curlopt(PG_FUNCTION_ARGS)
 	CURL * handle = http_get_handle();
 	curl_easy_reset(handle);
 
+	/* Clean out the settable_curlopts global cache */
 	while (1)
 	{
 		http_curlopt *opt = settable_curlopts + i++;
@@ -982,7 +985,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 #endif
 
 	/* Set up the HTTP timeout */
-	CURL_SETOPT(g_http_handle, CURLOPT_TIMEOUT_MS, g_timeout_msec);
+	if (g_timeout_msec > 0)
+		CURL_SETOPT(g_http_handle, CURLOPT_TIMEOUT_MS, g_timeout_msec);
 
 	/* Set the HTTP content encoding to all curl supports */
 	CURL_SETOPT(g_http_handle, CURLOPT_ACCEPT_ENCODING, "");
