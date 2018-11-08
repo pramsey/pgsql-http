@@ -28,6 +28,7 @@ before_script:
   - sudo apt-get -y --purge remove postgresql-9.4
   - sudo apt-get -y --purge remove postgresql-9.5
   - sudo apt-get -y --purge remove postgresql-9.6
+  - sudo apt-get -y --purge remove postgresql-common
   - sudo apt-get -y autoremove
   - sudo rm -rf /var/lib/postgresql
   - apt-key adv --fetch-keys https://www.postgresql.org/media/keys/ACCC4CF8.asc
