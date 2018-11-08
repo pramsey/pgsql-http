@@ -175,3 +175,17 @@ SELECT status FROM http_get('http://httpbin.org/status/555');
     555
 (1 row)
 
+-- Alter the default timeout and then run a query that is longer than 
+-- the default (5s), but shorter than the new timeout
+SELECT http_set_curlopt('CURLOPT_TIMEOUT_MS', '10000');
+ http_set_curlopt 
+------------------
+ t
+(1 row)
+
+SELECT status FROM http_get('http://httpstat.us/200?sleep=7000');
+ status 
+--------
+    200
+(1 row)
+
