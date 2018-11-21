@@ -95,10 +95,11 @@ enum {
 
 /* Components (and postitions) of the http_response tuple type */
 enum {
-	RESP_STATUS = 0,
-	RESP_CONTENT_TYPE = 1,
-	RESP_HEADERS = 2,
-	RESP_CONTENT = 3
+        RESP_URI = 0,
+        RESP_STATUS = 1,
+        RESP_CONTENT_TYPE = 2,
+        RESP_HEADERS = 3,
+        RESP_CONTENT = 4
 } http_response_type;
 
 /* Components (and postitions) of the http_header tuple type */
@@ -1145,6 +1146,9 @@ Datum http_request(PG_FUNCTION_ARGS)
 	ncolumns = tup_desc->natts;
 	values = palloc0(sizeof(Datum)*ncolumns);
 	nulls = palloc0(sizeof(bool)*ncolumns);
+
+        values[RESP_URI] = CStringGetTextDatum(uri);
+        nulls[RESP_URI] = false;
 
 	/* Status code */
 	status = long_status;
