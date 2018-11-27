@@ -121,7 +121,7 @@ typedef struct {
 	bool superuser_only;
 } http_curlopt;
 
-	
+
 /* CURLOPT values we allow user to set at run-time */
 /* Be careful adding these, as they can be a security risk */
 static http_curlopt settable_curlopts[] = {
@@ -130,6 +130,9 @@ static http_curlopt settable_curlopts[] = {
 	{ "CURLOPT_TIMEOUT_MS", NULL, CURLOPT_TIMEOUT_MS, CURLOPT_LONG, false },
 	{ "CURLOPT_CONNECTTIMEOUT", NULL, CURLOPT_CONNECTTIMEOUT, CURLOPT_LONG, false },
 	{ "CURLOPT_IPRESOLVE", NULL, CURLOPT_IPRESOLVE, CURLOPT_LONG, false },
+#if LIBCURL_VERSION_NUM >= 0x070903 /* 7.9.3 */
+	{ "CURLOPT_SSLCERTTYPE", NULL, CURLOPT_SSLCERTTYPE, CURLOPT_STRING, false },
+#endif
 #if LIBCURL_VERSION_NUM >= 0x070e01 /* 7.14.1 */
 	{ "CURLOPT_PROXY", NULL, CURLOPT_PROXY, CURLOPT_STRING, false },
 	{ "CURLOPT_PROXYPORT", NULL, CURLOPT_PROXYPORT, CURLOPT_LONG, false },
@@ -138,13 +141,13 @@ static http_curlopt settable_curlopts[] = {
 	{ "CURLOPT_PROXYUSERNAME", NULL, CURLOPT_PROXYUSERNAME, CURLOPT_STRING, false },
 	{ "CURLOPT_PROXYPASSWORD", NULL, CURLOPT_PROXYPASSWORD, CURLOPT_STRING, false },
 #endif
-// #if LIBCURL_VERSION_NUM >= 0x071304 /* 7.19.4 */
-// 	{ "CURLOPT_PROTOCOLS", CURLOPT_PROTOCOLS, CURLOPT_LONG, true },
-// #endif
 #if LIBCURL_VERSION_NUM >= 0x071504 /* 7.21.4 */
 	{ "CURLOPT_TLSAUTH_USERNAME", NULL, CURLOPT_TLSAUTH_USERNAME, CURLOPT_STRING, false },
 	{ "CURLOPT_TLSAUTH_PASSWORD", NULL, CURLOPT_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
 	{ "CURLOPT_TLSAUTH_TYPE", NULL, CURLOPT_TLSAUTH_TYPE, CURLOPT_STRING, false },
+#endif
+#if LIBCURL_VERSION_NUM >= 0x071800 /* 7.24.0 */
+	{ "CURLOPT_DNS_SERVERS", NULL, CURLOPT_DNS_SERVERS, CURLOPT_STRING, false },
 #endif
 #if LIBCURL_VERSION_NUM >= 0x071900 /* 7.25.0 */
 	{ "CURLOPT_TCP_KEEPALIVE", NULL, CURLOPT_TCP_KEEPALIVE, CURLOPT_LONG, false },
@@ -156,9 +159,6 @@ static http_curlopt settable_curlopts[] = {
 #endif
 	{ "CURLOPT_SSLCERT", NULL, CURLOPT_SSLCERT, CURLOPT_STRING, false },
 	{ "CURLOPT_SSLKEY", NULL, CURLOPT_SSLKEY, CURLOPT_STRING, false },
-#if LIBCURL_VERSION_NUM >= 0x070903 /* 7.9.3 */
-	{ "CURLOPT_SSLCERTTYPE", NULL, CURLOPT_SSLCERTTYPE, CURLOPT_STRING, false },
-#endif
 #if LIBCURL_VERSION_NUM >= 0x073400  /* 7.52.0 */
 	{ "CURLOPT_PRE_PROXY", NULL, CURLOPT_PRE_PROXY, CURLOPT_STRING, false },
 	{ "CURLOPT_PROXY_CAINFO", NULL, CURLOPT_PROXY_TLSAUTH_USERNAME, CURLOPT_STRING, false },
@@ -240,18 +240,18 @@ http_calloc(size_t a, size_t b)
 static void
 http_free(void *a)
 {
-	if (a) 
+	if (a)
 		pfree(a);
 }
 
 static void *
 http_realloc(void *a, size_t sz)
 {
-	if (a && sz) 
+	if (a && sz)
 		return repalloc(a, sz);
-	else if (sz) 
+	else if (sz)
 		return palloc(sz);
-	else 
+	else
 		return a;
 }
 
@@ -289,7 +289,7 @@ void _PG_init(void)
 							NULL,
 							NULL,
 							NULL);
-	
+
 #ifdef HTTP_MEM_CALLBACKS
 	/* Use PgSQL memory management in Curl */
 	curl_global_init_mem(CURL_GLOBAL_ALL, http_malloc, http_free, http_realloc, pstrdup, http_calloc);
@@ -297,7 +297,7 @@ void _PG_init(void)
 	/* Set up Curl! */
 	curl_global_init(CURL_GLOBAL_ALL);
 #endif
-	
+
 
 #if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 	/* Register our interrupt handler (http_handle_interrupt) */
@@ -552,8 +552,8 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 				elog(DEBUG2, "pgsql-http: optional request header '%s'", buffer);
 				headers = curl_slist_append(headers, buffer);
 				pfree(buffer);
-			} 
-			else 
+			}
+			else
 			{
 				elog(ERROR, "pgsql-http: palloc(%zu) failure", total_len);
 			}

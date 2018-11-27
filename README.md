@@ -206,6 +206,7 @@ As seen in the examples, you can unspool the array of `http_header` tuples into 
 
 Select [CURL options](https://curl.haxx.se/libcurl/c/curl_easy_setopt.html) are available to set using the `http_set_curlopt(curlopt VARCHAR, value varchar)` function.
 
+* [CURLOPT_DNS_SERVERS](https://curl.haxx.se/libcurl/c/CURLOPT_DNS_SERVERS.html)
 * [CURLOPT_PROXY](https://curl.haxx.se/libcurl/c/CURLOPT_PROXY.html)
 * [CURLOPT_PRE_PROXY](https://curl.haxx.se/libcurl/c/CURLOPT_PRE_PROXY.html)
 * [CURLOPT_PROXYPORT](https://curl.haxx.se/libcurl/c/CURLOPT_PROXYPORT.html)
