@@ -608,7 +608,7 @@ typname_get_tupledesc(const char *extname, const char *typname)
 }
 
 
-#define RVSZ 512 /* Max length of header element */
+#define RVSZ 8192 /* Max length of header element */
 
 /**
 * Convert a string of headers separated by newlines/CRs into an
