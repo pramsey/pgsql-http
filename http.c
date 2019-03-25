@@ -589,9 +589,16 @@ typname_get_tupledesc(const char *extname, const char *typname)
 	foreach(l, fetch_search_path(true))
 	{
 		Oid typnamespace = lfirst_oid(l);
-		Oid typoid = GetSysCacheOid2(TYPENAMENSP,
+
+#if PG_VERSION_NUM >= 120000
+		Oid typoid = GetSysCacheOid2(TYPENAMENSP, Anum_pg_type_oid,
 		                PointerGetDatum(typname),
 		                ObjectIdGetDatum(typnamespace));
+#else
+		Oid typoid = GetSysCacheOid2(TYPENAMENSP, Anum_pg_type_oid,
+		                PointerGetDatum(typname),
+		                ObjectIdGetDatum(typnamespace));
+#endif
 
 		if ( OidIsValid(typoid) )
 		{
