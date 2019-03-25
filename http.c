@@ -595,7 +595,7 @@ typname_get_tupledesc(const char *extname, const char *typname)
 		                PointerGetDatum(typname),
 		                ObjectIdGetDatum(typnamespace));
 #else
-		Oid typoid = GetSysCacheOid2(TYPENAMENSP, Anum_pg_type_oid,
+		Oid typoid = GetSysCacheOid2(TYPENAMENSP,
 		                PointerGetDatum(typname),
 		                ObjectIdGetDatum(typnamespace));
 #endif
