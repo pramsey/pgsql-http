@@ -28,7 +28,7 @@
  ***********************************************************************/
 
 /* Constants */
-#define HTTP_VERSION "1.3.1"
+#define HTTP_VERSION "1.3.2"
 #define HTTP_ENCODING "gzip"
 #define CURL_MIN_VERSION 0x071400 /* 7.20.0 */
 
