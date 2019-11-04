@@ -4,7 +4,7 @@
 
 ## Motivation
 
-Wouldn't it be nice to be able to write a trigger that [called a web service](https://boundlessgeo.com/2012/04/http-for-postgresql/)? Either to get back a result, or to poke that service into refreshing itself against the new state of the database?
+Wouldn't it be nice to be able to write a trigger that called a web service? Either to get back a result, or to poke that service into refreshing itself against the new state of the database?
 
 This extension is for that.
 
@@ -258,7 +258,7 @@ By default a 5 second timeout is set for the completion of a request.  If a diff
 
 ### UNIX
 
-If you have PostgreSQL (>= 9.3) devel packages and CURL devel packages installed (>= 0.7.20), you should have `pg_config` and `curl-config` on your path, so you should be able to just run `make`, then `make install`, then in your database `CREATE EXTENSION http`.
+If you have PostgreSQL (>= 9.3) devel packages and CURL devel packages installed (>= 0.7.20), you should have `pg_config` and `curl-config` on your path, so you should be able to just run `make` (or `gmake`), then `make install`, then in your database `CREATE EXTENSION http`.
 
 If you already installed a previous version and you just want to upgrade, then `ALTER EXTENSION http UPDATE`.
 
