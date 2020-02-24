@@ -176,7 +176,11 @@ static size_t http_writeback(void *contents, size_t size, size_t nmemb, void *us
 static size_t http_readback(void *buffer, size_t size, size_t nitems, void *instream);
 
 /* Global variables */
-bool g_use_keepalive;
+#if WITH_KEEPALIVE
+bool g_use_keepalive = true;
+#else
+bool g_use_keepalive = false;
+#endif
 int g_timeout_msec;
 
 CURL * g_http_handle = NULL;
