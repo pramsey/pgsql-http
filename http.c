@@ -222,6 +222,7 @@ http_interrupt_handler(int sig)
 	/* Handle the signal here */
 	elog(DEBUG2, "http_interrupt_handler: sig=%d", sig);
 	http_interrupt_requested = sig;
+	pgsql_interrupt_handler(sig);
 	return;
 }
 #endif /* 7.39.0 */
