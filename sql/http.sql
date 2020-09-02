@@ -73,7 +73,7 @@ WHERE field = 'Abcde';
 SELECT status,
 content::json->'args' AS args,
 content::json->'url' AS url
-FROM http_get('https://httpbin.org/redirect-to?url=http%3A%2F%2Fhttpbin%2Eorg%2Fget%3Ffoo%3Dbar');
+FROM http_get('https://httpbingo.org/redirect-to?url=https%3A%2F%2Fhttpbingo%2Eorg%2Fget%3Ffoo%3Dbar');
 
 -- Request image
 WITH
