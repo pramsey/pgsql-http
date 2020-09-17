@@ -22,6 +22,7 @@ CREATE TYPE http_header AS (
 );
 
 CREATE TYPE http_response AS (
+    uri VARCHAR,
     status INTEGER,
     content_type VARCHAR,
     headers http_header[],
