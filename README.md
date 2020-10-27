@@ -200,6 +200,7 @@ As seen in the examples, you can unspool the array of `http_header` tuples into 
 * `http_head(uri VARCHAR)` returns `http_response`
 * `http_set_curlopt(curlopt VARCHAR, value varchar)` returns `boolean`
 * `http_reset_curlopt()` returns `boolean`
+* `http_list_curlopt()` returns `setof(curlopt text, value text)`
 * `urlencode(string VARCHAR)` returns `text`
 
 ## CURL Options
@@ -235,7 +236,11 @@ Select [CURL options](https://curl.haxx.se/libcurl/c/curl_easy_setopt.html) are 
 For example,
 
 ```sql
+-- Set the PROXYPORT option
 SELECT http_set_curlopt('CURLOPT_PROXYPORT', '12345');
+
+-- List all currently set options
+SELECT * FROM http_list_curlopt();
 ```
 
 Will set the proxy port option for the lifetime of the database connection. You can reset all CURL options to their defaults using the `http_reset_curlopt()` function.

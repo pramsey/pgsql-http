@@ -36,19 +36,24 @@ CREATE TYPE http_request AS (
     content VARCHAR
 );
 
-CREATE OR REPLACE FUNCTION http_set_curlopt (curlopt VARCHAR, value VARCHAR) 
+CREATE OR REPLACE FUNCTION http_set_curlopt (curlopt VARCHAR, value VARCHAR)
     RETURNS boolean
     AS 'MODULE_PATHNAME', 'http_set_curlopt'
     LANGUAGE 'c';
 
-CREATE OR REPLACE FUNCTION http_reset_curlopt () 
+CREATE OR REPLACE FUNCTION http_reset_curlopt ()
     RETURNS boolean
     AS 'MODULE_PATHNAME', 'http_reset_curlopt'
     LANGUAGE 'c';
 
-CREATE OR REPLACE FUNCTION http_header (field VARCHAR, value VARCHAR) 
+CREATE OR REPLACE FUNCTION http_list_curlopt ()
+    RETURNS TABLE(curlopt text, value text)
+    AS 'MODULE_PATHNAME', 'http_list_curlopt'
+    LANGUAGE 'c';
+
+CREATE OR REPLACE FUNCTION http_header (field VARCHAR, value VARCHAR)
     RETURNS http_header
-    AS $$ SELECT $1, $2 $$ 
+    AS $$ SELECT $1, $2 $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http(request http_request)
@@ -80,7 +85,7 @@ CREATE OR REPLACE FUNCTION http_delete(uri VARCHAR)
     RETURNS http_response
     AS $$ SELECT http(('DELETE', $1, NULL, NULL, NULL)::http_request) $$
     LANGUAGE 'sql';
-    
+
 CREATE OR REPLACE FUNCTION http_head(uri VARCHAR)
     RETURNS http_response
     AS $$ SELECT http(('HEAD', $1, NULL, NULL, NULL)::http_request) $$
