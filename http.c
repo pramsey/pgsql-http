@@ -768,7 +768,7 @@ http_get_handle()
 	curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 5000);
 
     /* Set the user agent. If not set, use PG_VERSION as default */
-    curl_easy_setopt(handle, CURLOPT_USERAGENT, PG_VERSION);
+    curl_easy_setopt(handle, CURLOPT_USERAGENT, PG_VERSION_STR);
 
 	if (!handle)
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
