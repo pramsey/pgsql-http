@@ -129,6 +129,7 @@ static http_curlopt settable_curlopts[] = {
 	{ "CURLOPT_TIMEOUT", NULL, CURLOPT_TIMEOUT, CURLOPT_LONG, false },
 	{ "CURLOPT_TIMEOUT_MS", NULL, CURLOPT_TIMEOUT_MS, CURLOPT_LONG, false },
 	{ "CURLOPT_CONNECTTIMEOUT", NULL, CURLOPT_CONNECTTIMEOUT, CURLOPT_LONG, false },
+    { "CURLOPT_USERAGENT", NULL, CURLOPT_USERAGENT, CURLOPT_STRING, false },
 	{ "CURLOPT_IPRESOLVE", NULL, CURLOPT_IPRESOLVE, CURLOPT_LONG, false },
 #if LIBCURL_VERSION_NUM >= 0x070903 /* 7.9.3 */
 	{ "CURLOPT_SSLCERTTYPE", NULL, CURLOPT_SSLCERTTYPE, CURLOPT_STRING, false },
@@ -766,6 +767,9 @@ http_get_handle()
 	curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
 	curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 5000);
 
+    /* Set the user agent. If not set, use PG_VERSION as default */
+    curl_easy_setopt(handle, CURLOPT_USERAGENT, PG_VERSION_STR);
+
 	if (!handle)
 		ereport(ERROR, (errmsg("Unable to initialize CURL")));
 
@@ -1012,9 +1016,6 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 	/* Set the target URL */
 	CURL_SETOPT(g_http_handle, CURLOPT_URL, uri);
-
-	/* Set the user agent */
-	CURL_SETOPT(g_http_handle, CURLOPT_USERAGENT, PG_VERSION_STR);
 
 	/* Restrict to just http/https. Leaving unrestricted */
 	/* opens possibility of users requesting file:/// urls */

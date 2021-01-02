@@ -155,6 +155,7 @@ FROM
 --------+-----------------------------------------------------------
     302 | http://www.google.ch/?gfe_rd=cr&ei=ACESWLy_KuvI8zeghL64Ag
 ```
+
 ## Concepts
 
 Every HTTP call is a made up of an `http_request` and an `http_response`.
@@ -231,6 +232,8 @@ Select [CURL options](https://curl.haxx.se/libcurl/c/curl_easy_setopt.html) are 
 * [CURLOPT_TCP_KEEPALIVE](https://curl.haxx.se/libcurl/c/CURLOPT_TCP_KEEPALIVE.html)
 * [CURLOPT_TCP_KEEPIDLE](https://curl.haxx.se/libcurl/c/CURLOPT_TCP_KEEPIDLE.html)
 * [CURLOPT_CONNECTTIMEOUT](https://curl.haxx.se/libcurl/c/CURLOPT_CONNECTTIMEOUT.html)
+* [CURLOPT_USERAGENT](https://curl.haxx.se/libcurl/c/CURLOPT_USERAGENT.html)
+
 
 
 For example,
@@ -244,6 +247,27 @@ SELECT * FROM http_list_curlopt();
 ```
 
 Will set the proxy port option for the lifetime of the database connection. You can reset all CURL options to their defaults using the `http_reset_curlopt()` function.
+
+Using this extension as a background automated process without supervision (e.g as a trigger) may have unintended consequences for other servers.
+It is considered a best practice to share contact information with your requests,
+so that administrators can reach you in case your HTTP calls get out of control.
+
+Certain API policies (e.g. [Wikimedia User-Agent policy](https://meta.wikimedia.org/wiki/User-Agent_policy)) may even require sharing specific contact information
+with each request. Others may disallow (via `robots.txt`) certain agents they don't recognize.
+
+For such cases you can set the `CURLOPT_USERAGENT` option
+
+```sql
+SELECT http_set_curlopt('CURLOPT_USERAGENT',
+                        'Examplebot/2.1 (+http://www.example.com/bot.html) Contact abuse@example.com');
+
+SELECT status, content::json ->> 'user-agent' FROM http_get('http://httpbin.org/user-agent');
+```
+```
+ status |                         user_agent
+--------+-----------------------------------------------------------
+    200 | Examplebot/2.1 (+http://www.example.com/bot.html) Contact abuse@example.com
+```
 
 ## Keep-Alive & Timeouts
 
