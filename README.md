@@ -261,7 +261,7 @@ For such cases you can set the `CURLOPT_USERAGENT` option
 SELECT http_set_curlopt('CURLOPT_USERAGENT',
                         'Examplebot/2.1 (+http://www.example.com/bot.html) Contact abuse@example.com');
 
-SELECT content::json ->> 'user-agent' FROM http_get('http://httpbin.org/user-agent');
+SELECT status, content::json ->> 'user-agent' FROM http_get('http://httpbin.org/user-agent');
 ```
 ```
  status |                         user_agent
