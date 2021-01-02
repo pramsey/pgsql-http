@@ -155,6 +155,29 @@ FROM
 --------+-----------------------------------------------------------
     302 | http://www.google.ch/?gfe_rd=cr&ei=ACESWLy_KuvI8zeghL64Ag
 ```
+
+Using this extension as a background automated process without supervision (e.g as a trigger) may have unintended consequences for other servers.
+It is considered a best practice to share contact information with your requests,
+so that administrators can reach you in case your HTTP calls get out of control.
+
+Certain API policies (e.g. [Wikimedia User-Agent policy](https://meta.wikimedia.org/wiki/User-Agent_policy)) may even require sharing specific contact information
+with each request. Others may disallow (via `robots.txt`) certain agents they don't recognize.
+
+For such cases you can set the `CURLOPT_USERAGENT` option
+
+```sql
+SELECT http_set_curlopt('CURLOPT_USERAGENT',
+                        'Examplebot/2.1 (+http://www.example.com/bot.html) Contact abuse@example.com');
+
+SELECT content::json ->> 'user-agent' FROM http_get('http://httpbin.org/user-agent');
+```
+```
+ status |                         user_agent
+--------+-----------------------------------------------------------
+    200 | Examplebot/2.1 (+http://www.example.com/bot.html) Contact abuse@example.com
+```
+
+
 ## Concepts
 
 Every HTTP call is a made up of an `http_request` and an `http_response`.
