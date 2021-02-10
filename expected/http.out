@@ -15,15 +15,15 @@ FROM http_get('https://httpbin.org/status/202');
 (1 row)
 
 -- Headers
-SELECT *
+SELECT lower(field) AS field, value
 FROM (
 	SELECT (unnest(headers)).*
 	FROM http_get('https://httpbin.org/response-headers?Abcde=abcde')
 ) a
-WHERE field = 'Abcde';
+WHERE field ILIKE 'Abcde';
  field | value 
 -------+-------
- Abcde | abcde
+ abcde | abcde
 (1 row)
 
 -- GET
@@ -107,15 +107,15 @@ FROM http_post('https://httpbin.org/anything?foo=bar','payload','text/plain');
 (1 row)
 
 -- HEAD
-SELECT *
+SELECT lower(field) AS field, value
 FROM (
 	SELECT (unnest(headers)).*
 	FROM http_head('https://httpbin.org/response-headers?Abcde=abcde')
 ) a
-WHERE field = 'Abcde';
+WHERE field ILIKE 'Abcde';
  field | value 
 -------+-------
- Abcde | abcde
+ abcde | abcde
 (1 row)
 
 -- Follow redirect
@@ -141,7 +141,7 @@ SELECT
   length(textsend(http.content)) AS length_binary,
   headers.value AS length_headers
 FROM http, headers
-WHERE field = 'Content-Length';
+WHERE field ILIKE 'Content-Length';
  content_type | length_binary | length_headers 
 --------------+---------------+----------------
  image/png    |          8090 | 8090
