@@ -34,7 +34,7 @@ jobs:
         export PG_VERSION=${{ matrix.ci.PG_VERSION }}
         sudo /etc/init.d/postgresql stop
 
-        sudo apt-get -y --purge remove postgresql postgresql-common postgresql-$OS_PGVER postgresql-server-dev-$OS_PGVER postgresql-client-common postgresql-client-$OS_PGVER libpq-dev
+        sudo apt-get -y -f --purge remove postgresql postgresql-common postgresql-$OS_PGVER postgresql-server-dev-$OS_PGVER postgresql-client-common postgresql-client-$OS_PGVER libpq-dev
         sudo apt-get -y autoremove
         sudo rm -rf /var/lib/postgresql
         curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
