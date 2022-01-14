@@ -297,7 +297,7 @@ There is a build available at [postgresonline](http://www.postgresonline.com/jou
 
 ## Why This is a Bad Idea
 
-- "What happens if the web page takes a long time to return?" Your SQL call will just wait there until it does. Make sure your web service fails fast.
+- "What happens if the web page takes a long time to return?" Your SQL call will just wait there until it does. Make sure your web service fails fast. Or (dangerous in a different way) run your query within [pg_background](https://github.com/vibhorkum/pg_background).
 - "What if the web page returns junk?" Your SQL call will have to test for junk before doing anything with the payload.
 - "What if the web page never returns?" Set a short timeout, or send a cancel to the request, or just wait forever.
 - "What if a user queries a page they shouldn't?" Restrict function access, or just don't install a footgun like this extension where users can access it.
