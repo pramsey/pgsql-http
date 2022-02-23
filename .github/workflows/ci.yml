@@ -8,9 +8,11 @@ on: [push, pull_request]
 jobs:
   linux:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
+
     env:
       PG_VERSION: 14
+      OS_NAME: focal-pgdg
 
     steps:
 
@@ -19,6 +21,8 @@ jobs:
 
     - name: 'Install'
       run: |
+        curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $OS_NAME main $PG_VERSION"
         sudo apt-get -y install libcurl4-gnutls-dev postgresql-server-dev-$PG_VERSION
         sudo systemctl start postgresql.service
 
