@@ -24,6 +24,7 @@ jobs:
         curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
         sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $OS_NAME main $PG_VERSION"
         sudo apt-get -y install libcurl4-gnutls-dev postgresql-server-dev-$PG_VERSION
+        sudo cp ./ci/pg_hba.conf /etc/postgresql/$PG_VERSION/main/pg_hba.conf
         sudo systemctl start postgresql.service
 
     - name: 'Build & Test'
