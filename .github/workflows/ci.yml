@@ -8,21 +8,7 @@ on: [push, pull_request]
 jobs:
   linux:
 
-    env:
-      OS_VERSION: ubuntu-20.04
-      OS_PGNAME: focal-pgdg
-      OS_PGVER: 14
-
-    name: "CI"
-    strategy:
-      matrix:
-        ci:
-        - { PG_VERSION: 11 }
-        - { PG_VERSION: 12 }
-        - { PG_VERSION: 13 }
-        - { PG_VERSION: 14 }
-
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
 
@@ -31,24 +17,12 @@ jobs:
 
     - name: 'Install'
       run: |
-        export PG_VERSION=${{ matrix.ci.PG_VERSION }}
-        sudo /etc/init.d/postgresql stop
-
-        sudo apt-get -y -f --ignore-missing --purge remove postgresql postgresql-common postgresql-$OS_PGVER postgresql-server-dev-$OS_PGVER postgresql-client-common postgresql-client-$OS_PGVER libpq-dev
-        sudo apt-get -y autoremove
-        sudo rm -rf /var/lib/postgresql
-        curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-        sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $OS_PGNAME main $PG_VERSION"
-        sudo apt-get -y install libcurl4-gnutls-dev postgresql-$PG_VERSION postgresql-client-$PG_VERSION postgresql-server-dev-$PG_VERSION
-        sudo cp ./ci/pg_hba.conf /etc/postgresql/$PG_VERSION/main/pg_hba.conf
-        sudo /etc/init.d/postgresql stop
-        sudo /etc/init.d/postgresql start
+        sudo apt-get -y install libcurl4-gnutls-dev
+        sudo systemctl start postgresql.service
 
     - name: 'Build & Test'
       run: |
         export PATH=/usr/lib/postgresql/${{ matrix.ci.PG_VERSION }}/bin/:$PATH
         make
         sudo make install
-        PGUSER=postgres PGPORT=5432 make installcheck || (cat regression.diffs && /bin/false)
-
-
+        PGUSER=postgres make installcheck || (cat regression.diffs && /bin/false)
