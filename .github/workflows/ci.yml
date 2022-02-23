@@ -9,6 +9,8 @@ jobs:
   linux:
 
     runs-on: ubuntu-latest
+    env:
+      PG_VERSION: 14
 
     steps:
 
@@ -17,12 +19,12 @@ jobs:
 
     - name: 'Install'
       run: |
-        sudo apt-get -y install libcurl4-gnutls-dev
+        sudo apt-get -y install libcurl4-gnutls-dev postgresql-server-dev-$PG_VERSION
         sudo systemctl start postgresql.service
 
     - name: 'Build & Test'
       run: |
-        export PATH=/usr/lib/postgresql/${{ matrix.ci.PG_VERSION }}/bin/:$PATH
+        export PATH=/usr/lib/postgresql/$PG_VERSION/bin/:$PATH
         make
         sudo make install
         PGUSER=postgres make installcheck || (cat regression.diffs && /bin/false)
