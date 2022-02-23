@@ -155,11 +155,28 @@ SELECT http_set_curlopt('CURLOPT_PROXY', '127.0.0.1');
 (1 row)
 
 -- Error because proxy is not there
-SELECT status FROM http_get('https://httpbin.org/status/555');
-ERROR:  Failed to connect to 127.0.0.1 port 1080: Connection refused
+DO $$
+BEGIN
+    SELECT status FROM http_get('https://httpbin.org/status/555');
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'Failed to connect';
+END;
+$$;
+ERROR:  Failed to connect
+CONTEXT:  PL/pgSQL function inline_code_block line 6 at RAISE
 -- Still an error
-SELECT status FROM http_get('https://httpbin.org/status/555');
-ERROR:  Failed to connect to 127.0.0.1 port 1080: Connection refused
+DO $$
+BEGIN
+    SELECT status FROM http_get('https://httpbin.org/status/555');
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'Failed to connect';
+END;
+$$;
+ERROR:  Failed to connect
+CONTEXT:  PL/pgSQL function inline_code_block line 6 at RAISE
+-- Reset options
 SELECT http_reset_curlopt();
  http_reset_curlopt 
 --------------------
