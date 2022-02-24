@@ -354,7 +354,7 @@ http_readback(void *buffer, size_t size, size_t nitems, void *instream)
 	size_t reqsize = size * nitems;
 	StringInfo si = (StringInfo)instream;
 	size_t remaining = si->len - si->cursor;
-	size_t readsize = reqsize < remaining ? reqsize : remaining;
+	size_t readsize = Min(reqsize, remaining);
 	memcpy(buffer, si->data + si->cursor, readsize);
 	si->cursor += readsize;
 	return readsize;
@@ -671,9 +671,9 @@ header_string_to_array(StringInfo si)
 		int eo2 = pmatch[2].rm_eo;
 
 		/* Copy the matched portions out of the string */
-		memcpy(rv1, si->data+si->cursor+so1, eo1-so1 < RVSZ ? eo1-so1 : RVSZ);
+		memcpy(rv1, si->data+si->cursor+so1, Min(eo1-so1, RVSZ));
 		rv1[eo1-so1] = '\0';
-		memcpy(rv2, si->data+si->cursor+so2, eo2-so2 < RVSZ ? eo2-so2 : RVSZ);
+		memcpy(rv2, si->data+si->cursor+so2, Min(eo2-so2, RVSZ));
 		rv2[eo2-so2] = '\0';
 
 		/* Move forward for next match */
@@ -1104,7 +1104,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 		/* Read the content */
 		content_text = DatumGetTextP(values[REQ_CONTENT]);
-		content_size = VARSIZE(content_text) - VARHDRSZ;
+		content_size = VARSIZE_ANY_EXHDR(content_text);
 
 		if ( method == HTTP_GET || method == HTTP_POST )
 		{
