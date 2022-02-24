@@ -17,10 +17,17 @@ WHERE field ILIKE 'Abcde';
 
 -- GET
 SELECT status,
-content::json->'args' AS args,
+content::json->'args'->>'foo' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_get('https://httpbin.org/anything?foo=bar');
+
+-- GET with data
+SELECT status,
+content::json->'args'->>'this' AS args,
+content::json->'url' AS url,
+content::json->'method' AS method
+FROM http_get('https://httpbin.org/anything', jsonb_build_object('this', 'that'));
 
 -- GET with data
 SELECT status,
@@ -60,6 +67,13 @@ content::json->'args' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_post('https://httpbin.org/anything?foo=bar','payload','text/plain');
+
+-- POST with data
+SELECT status,
+content::json->'form'->>'this' AS args,
+content::json->'url' AS url,
+content::json->'method' AS method
+FROM http_post('https://httpbin.org/anything', jsonb_build_object('this', 'that'));
 
 -- HEAD
 SELECT lower(field) AS field, value

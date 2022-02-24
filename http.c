@@ -48,13 +48,13 @@
 #include <catalog/pg_type.h>
 #include <catalog/dependency.h>
 #include <commands/extension.h>
-
 #include <lib/stringinfo.h>
 #include <mb/pg_wchar.h>
 #include <nodes/pg_list.h>
 #include <utils/array.h>
 #include <utils/builtins.h>
 #include <utils/catcache.h>
+#include <utils/jsonb.h>
 #include <utils/lsyscache.h>
 #include <utils/syscache.h>
 #include <utils/typcache.h>
@@ -1338,37 +1338,34 @@ static int chars_to_not_encode[] = {
 
 
 
-/**
-* Utility function for users building URL encoded requests, applies
-* standard URL encoding to an input string.
+/*
+* Take in a text pointer and output a cstring with
+* all encodable characters encoded.
 */
-Datum urlencode(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(urlencode);
-Datum urlencode(PG_FUNCTION_ARGS)
+static char*
+urlencode_cstr(const char* str_in, size_t str_in_len)
 {
-	text *txt = PG_GETARG_TEXT_P(0); /* Declare strict, so no test for NULL input */
-	size_t txt_size = VARSIZE(txt) - VARHDRSZ;
-	char *str_in, *str_out, *ptr;
+	char *str_out, *ptr;
 	size_t i;
 	int rv;
 
-	/* Point into the string */
-	str_in = VARDATA(txt);
+	if (!str_in_len) return pstrdup("");
 
-	/* Prepare the output string */
-	str_out = palloc0(txt_size * 4);
+	/* Prepare the output string, encoding can fluff the ouput */
+	/* considerably */
+	str_out = palloc0(str_in_len * 4);
 	ptr = str_out;
 
-	for ( i = 0; i < txt_size; i++ )
+	for (i = 0; i < str_in_len; i++)
 	{
 		unsigned char c = str_in[i];
 
 		/* Break on NULL */
-		if ( c == '\0' )
+		if (c == '\0')
 			break;
 
 		/* Replace ' ' with '+' */
-		if ( c  == ' ' )
+		if (c  == ' ')
 		{
 			*ptr = '+';
 			ptr++;
@@ -1376,7 +1373,7 @@ Datum urlencode(PG_FUNCTION_ARGS)
 		}
 
 		/* Pass basic characters through */
-		if ( (c < 127) && chars_to_not_encode[(int)(str_in[i])] )
+		if ((c < 127) && chars_to_not_encode[(int)(str_in[i])])
 		{
 			*ptr = str_in[i];
 			ptr++;
@@ -1386,14 +1383,119 @@ Datum urlencode(PG_FUNCTION_ARGS)
 		/* Encode the remaining chars */
 		rv = snprintf(ptr, 4, "%%%02X", c);
 		if ( rv < 0 )
-			PG_RETURN_NULL();
+			return NULL;
 
 		/* Move pointer forward */
 		ptr += 3;
 	}
 	*ptr = '\0';
 
-	PG_RETURN_TEXT_P(cstring_to_text(str_out));
+	return str_out;
+}
+
+/**
+* Utility function for users building URL encoded requests, applies
+* standard URL encoding to an input string.
+*/
+Datum urlencode(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(urlencode);
+Datum urlencode(PG_FUNCTION_ARGS)
+{
+	/* Declare SQL function strict, so no test for NULL input */
+	text *txt = PG_GETARG_TEXT_P(0);
+	char *encoded = urlencode_cstr(VARDATA(txt), VARSIZE_ANY_EXHDR(txt));
+	if (encoded)
+		PG_RETURN_TEXT_P(cstring_to_text(encoded));
+	else
+		PG_RETURN_NULL();
+}
+
+/**
+* Treat the top level jsonb map as a key/value set
+* to be fed into urlencode and return a correctly
+* encoded data string.
+*/
+Datum urlencode_jsonb(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(urlencode_jsonb);
+Datum urlencode_jsonb(PG_FUNCTION_ARGS)
+{
+	bool skipNested = false;
+	Jsonb* jb = PG_GETARG_JSONB_P(0);
+	JsonbIterator *it;
+	JsonbValue v;
+	JsonbIteratorToken r;
+	StringInfo si;
+	size_t count = 0;
+
+	if (!JB_ROOT_IS_OBJECT(jb))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("cannot call %s on a non-object", __func__)));
+	}
+
+	/* Buffer to write complete output into */
+	si = makeStringInfo();
+
+	it = JsonbIteratorInit(&jb->root);
+	while ((r = JsonbIteratorNext(&it, &v, skipNested)) != WJB_DONE)
+	{
+		skipNested = true;
+
+		if (r == WJB_KEY)
+		{
+			char *key, *key_enc, *value, *value_enc;
+
+			/* Skip zero-length key */
+			if(!v.val.string.len) continue;
+
+			/* Read and encode the key */
+			key = pnstrdup(v.val.string.val, v.val.string.len);
+			key_enc = urlencode_cstr(v.val.string.val, v.val.string.len);
+
+			/* Read and encode the value */
+			getKeyJsonValueFromContainer(&jb->root, key, strlen(key), &v);
+ 			switch(v.type)
+ 			{
+ 				case jbvString: {
+ 					value = pnstrdup(v.val.string.val, v.val.string.len);
+					break;
+ 				}
+ 				case jbvNumeric: {
+ 					value = numeric_normalize(v.val.numeric);
+					break;
+ 				}
+ 				case jbvBool: {
+					value = pstrdup(v.val.boolean ? "true" : "false");
+					break;
+ 				}
+ 				case jbvNull: {
+ 					value = pstrdup("");
+ 					break;
+ 				}
+ 				default: {
+					elog(DEBUG2, "skipping non-scalar value of '%s'", key);
+					continue;
+ 				}
+
+ 			}
+			/* Write the result */
+			value_enc = urlencode_cstr(value, strlen(value));
+			if (count++) appendStringInfo(si, "&");
+			appendStringInfo(si, "%s=%s", key_enc, value_enc);
+
+			/* Clean up temporary strings */
+			if (key) pfree(key);
+			if (value) pfree(value);
+			if (key_enc) pfree(key_enc);
+			if (value_enc) pfree(value_enc);
+		}
+	}
+
+	if (si->len)
+		PG_RETURN_TEXT_P(cstring_to_text_with_len(si->data, si->len));
+	else
+		PG_RETURN_NULL();
 }
 
 // Local Variables:

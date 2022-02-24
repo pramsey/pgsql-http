@@ -4,7 +4,8 @@ OBJS = http.o
 EXTENSION = http
 
 DATA = \
-	http--1.4.sql \
+	http--1.5.sql \
+	http--1.4--1.5.sql \
 	http--1.3--1.4.sql \
 	http--1.2--1.3.sql \
 	http--1.1--1.2.sql \

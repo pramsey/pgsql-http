@@ -20,6 +20,15 @@ SELECT urlencode('my special string''s & things?');
 (1 row)
 ```
 ```sql
+SELECT urlencode(jsonb_build_object('name','Colin & James','rate','50%'));
+```
+```
+              urlencode
+-------------------------------------
+ name=Colin+%26+James&rate=50%25
+(1 row)
+```
+```sql
 SELECT content FROM http_get('http://httpbin.org/ip');
 ```
 ```
@@ -97,22 +106,20 @@ SELECT status, content_type, content::json->>'url' AS url
     200 | application/json | http://httpbin.org/delete
 ```
 
-To POST to a URL using a data payload instead of parameters embedded in the URL, use the `application/x-www-form-urlencoded` content type.
+As a shortcut to send data to a GET request, pass a JSONB data argument.
 
 ```sql
-SELECT status, content::json->>'form'
-  FROM http_post('http://httpbin.org/post',
-                 'myvar=myval&foo=bar',
-                 'application/x-www-form-urlencoded');
+SELECT status, content::json->'args' AS args
+  FROM http_get('http://httpbin.org/get',
+                jsonb_build_object('myvar','myval','foo','bar'));
 ```
 
-Remember to [URL encode](http://en.wikipedia.org/wiki/Percent-encoding) content that includes any "special" characters (really, anything other than a-z and 0-9).
+To POST to a URL using a data payload instead of parameters embedded in the URL, encode the data in a JSONB as a data payload.
 
 ```sql
-SELECT status, content::json->>'form'
+SELECT status, content::json->'form' AS form
   FROM http_post('http://httpbin.org/post',
-                 'myvar=' || urlencode('my special string & things?'),
-                 'application/x-www-form-urlencoded');
+                 jsonb_build_object('myvar','myval','foo','bar'));
 ```
 
 To access binary content, you must coerce the content from the default `varchar` representation to a `bytea` representation using the `textsend` function. Using the default `varchar::bytea` cast will not work, as the cast will stop the first time it hits a zero-valued byte (common in binary data).
@@ -233,8 +240,6 @@ Select [CURL options](https://curl.haxx.se/libcurl/c/curl_easy_setopt.html) are 
 * [CURLOPT_TCP_KEEPIDLE](https://curl.haxx.se/libcurl/c/CURLOPT_TCP_KEEPIDLE.html)
 * [CURLOPT_CONNECTTIMEOUT](https://curl.haxx.se/libcurl/c/CURLOPT_CONNECTTIMEOUT.html)
 * [CURLOPT_USERAGENT](https://curl.haxx.se/libcurl/c/CURLOPT_USERAGENT.html)
-
-
 
 For example,
 
