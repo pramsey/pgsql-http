@@ -43,9 +43,12 @@
 #include <postgres.h>
 #include <fmgr.h>
 #include <funcapi.h>
+#include <access/genam.h>
 #include <access/htup.h>
+#include <access/table.h>
 #include <catalog/namespace.h>
 #include <catalog/pg_type.h>
+#include <catalog/pg_extension.h>
 #include <catalog/dependency.h>
 #include <commands/extension.h>
 #include <lib/stringinfo.h>
@@ -58,6 +61,7 @@
 #include <utils/lsyscache.h>
 #include <utils/syscache.h>
 #include <utils/typcache.h>
+#include <utils/fmgroids.h>
 #include <utils/guc.h>
 
 #if PG_VERSION_NUM >= 100000
@@ -575,6 +579,43 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 }
 
 /**
+* Look up the namespace the extension is installed in
+*/
+static Oid
+get_extension_schema(Oid ext_oid)
+{
+	Oid			result;
+	Relation	rel;
+	SysScanDesc scandesc;
+	HeapTuple	tuple;
+	ScanKeyData entry[1];
+
+	rel = table_open(ExtensionRelationId, AccessShareLock);
+
+	ScanKeyInit(&entry[0],
+				Anum_pg_extension_oid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(ext_oid));
+
+	scandesc = systable_beginscan(rel, ExtensionOidIndexId, true,
+								  NULL, 1, entry);
+
+	tuple = systable_getnext(scandesc);
+
+	/* We assume that there can be at most one matching tuple */
+	if (HeapTupleIsValid(tuple))
+		result = ((Form_pg_extension) GETSTRUCT(tuple))->extnamespace;
+	else
+		result = InvalidOid;
+
+	systable_endscan(scandesc);
+
+	table_close(rel, AccessShareLock);
+
+	return result;
+}
+
+/**
 * Look up the tuple description for a extension-defined type,
 * avoiding the pitfalls of using relations that are not part
 * of the extension, but share the same name as the relation
@@ -584,33 +625,30 @@ static TupleDesc
 typname_get_tupledesc(const char *extname, const char *typname)
 {
 	Oid extoid = get_extension_oid(extname, true);
-	ListCell *l;
+	Oid extschemaoid;
 
 	if ( ! OidIsValid(extoid) )
 		elog(ERROR, "could not lookup '%s' extension oid", extname);
 
-	foreach(l, fetch_search_path(true))
-	{
-		Oid typnamespace = lfirst_oid(l);
+	extschemaoid = get_extension_schema(extoid);
 
 #if PG_VERSION_NUM >= 120000
-		Oid typoid = GetSysCacheOid2(TYPENAMENSP, Anum_pg_type_oid,
-		                PointerGetDatum(typname),
-		                ObjectIdGetDatum(typnamespace));
+	Oid typoid = GetSysCacheOid2(TYPENAMENSP, Anum_pg_type_oid,
+	               PointerGetDatum(typname),
+	               ObjectIdGetDatum(extschemaoid));
 #else
-		Oid typoid = GetSysCacheOid2(TYPENAMENSP,
-		                PointerGetDatum(typname),
-		                ObjectIdGetDatum(typnamespace));
+	Oid typoid = GetSysCacheOid2(TYPENAMENSP,
+	               PointerGetDatum(typname),
+	               ObjectIdGetDatum(extschemaoid));
 #endif
 
-		if ( OidIsValid(typoid) )
+	if ( OidIsValid(typoid) )
+	{
+		// Oid typ_oid = get_typ_typrelid(rel_oid);
+		Oid relextoid = getExtensionOfObject(TypeRelationId, typoid);
+		if ( relextoid == extoid )
 		{
-			// Oid typ_oid = get_typ_typrelid(rel_oid);
-			Oid relextoid = getExtensionOfObject(TypeRelationId, typoid);
-			if ( relextoid == extoid )
-			{
-				return TypeGetTupleDesc(typoid, NIL);
-			}
+			return TypeGetTupleDesc(typoid, NIL);
 		}
 	}
 
@@ -1206,7 +1244,11 @@ Datum http_request(PG_FUNCTION_ARGS)
 	}
 
 	/* Prepare our return object */
-	tup_desc = RelationNameGetTupleDesc("http_response");
+    if (get_call_result_type(fcinfo, 0, &tup_desc) != TYPEFUNC_COMPOSITE) {
+        ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+            errmsg("%s called with incompatible return type", __func__)));
+    }
+
 	ncolumns = tup_desc->natts;
 	values = palloc0(sizeof(Datum)*ncolumns);
 	nulls = palloc0(sizeof(bool)*ncolumns);

@@ -63,32 +63,32 @@ CREATE OR REPLACE FUNCTION http(request http_request)
 
 CREATE OR REPLACE FUNCTION http_get(uri VARCHAR)
     RETURNS http_response
-    AS $$ SELECT http(('GET', $1, NULL, NULL, NULL)::http_request) $$
+    AS $$ SELECT @extschema@.http(('GET', $1, NULL, NULL, NULL)::@extschema@.http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_post(uri VARCHAR, content VARCHAR, content_type VARCHAR)
     RETURNS http_response
-    AS $$ SELECT http(('POST', $1, NULL, $3, $2)::http_request) $$
+    AS $$ SELECT @extschema@.http(('POST', $1, NULL, $3, $2)::@extschema@.http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_put(uri VARCHAR, content VARCHAR, content_type VARCHAR)
     RETURNS http_response
-    AS $$ SELECT http(('PUT', $1, NULL, $3, $2)::http_request) $$
+    AS $$ SELECT @extschema@.http(('PUT', $1, NULL, $3, $2)::@extschema@.http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_patch(uri VARCHAR, content VARCHAR, content_type VARCHAR)
     RETURNS http_response
-    AS $$ SELECT http(('PATCH', $1, NULL, $3, $2)::http_request) $$
+    AS $$ SELECT @extschema@.http(('PATCH', $1, NULL, $3, $2)::@extschema@.http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_delete(uri VARCHAR)
     RETURNS http_response
-    AS $$ SELECT http(('DELETE', $1, NULL, NULL, NULL)::http_request) $$
+    AS $$ SELECT @extschema@.http(('DELETE', $1, NULL, NULL, NULL)::@extschema@.http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_head(uri VARCHAR)
     RETURNS http_response
-    AS $$ SELECT http(('HEAD', $1, NULL, NULL, NULL)::http_request) $$
+    AS $$ SELECT @extschema@.http(('HEAD', $1, NULL, NULL, NULL)::@extschema@.http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION urlencode(string VARCHAR)
@@ -111,12 +111,16 @@ CREATE OR REPLACE FUNCTION urlencode(data JSONB)
 
 CREATE OR REPLACE FUNCTION http_get(uri VARCHAR, data JSONB)
     RETURNS http_response
-    AS $$ SELECT http(('GET', $1 || '?' || urlencode($2), NULL, NULL, NULL)::http_request) $$
+    AS $$
+        SELECT @extschema@.http(('GET', $1 || '?' || urlencode($2), NULL, NULL, NULL)::@extschema@.http_request)
+    $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_post(uri VARCHAR, data JSONB)
     RETURNS http_response
-    AS $$ SELECT http(('POST', $1, NULL, 'application/x-www-form-urlencoded', urlencode($2))::http_request) $$
+    AS $$
+        SELECT @extschema@.http(('POST', $1, NULL, 'application/x-www-form-urlencoded', urlencode($2))::@extschema@.http_request)
+    $$
     LANGUAGE 'sql';
 
 

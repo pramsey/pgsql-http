@@ -1,4 +1,3 @@
 default_version = '1.4'
 module_pathname = '$libdir/http'
-relocatable = true
 comment = 'HTTP client for PostgreSQL, allows web page retrieval inside the database.'
