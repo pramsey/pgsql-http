@@ -1482,7 +1482,7 @@ Datum urlencode_jsonb(PG_FUNCTION_ARGS)
 	JsonbIterator *it;
 	JsonbValue v;
 	JsonbIteratorToken r;
-	StringInfo si;
+	StringInfoData si;
 	size_t count = 0;
 
 	if (!JB_ROOT_IS_OBJECT(jb))
@@ -1493,7 +1493,7 @@ Datum urlencode_jsonb(PG_FUNCTION_ARGS)
 	}
 
 	/* Buffer to write complete output into */
-	si = makeStringInfo();
+	initStringInfo(&si);
 
 	it = JsonbIteratorInit(&jb->root);
 	while ((r = JsonbIteratorNext(&it, &v, skipNested)) != WJB_DONE)
@@ -1550,8 +1550,8 @@ Datum urlencode_jsonb(PG_FUNCTION_ARGS)
  			}
 			/* Write the result */
 			value_enc = urlencode_cstr(value, strlen(value));
-			if (count++) appendStringInfo(si, "&");
-			appendStringInfo(si, "%s=%s", key_enc, value_enc);
+			if (count++) appendStringInfo(&si, "&");
+			appendStringInfo(&si, "%s=%s", key_enc, value_enc);
 
 			/* Clean up temporary strings */
 			if (key) pfree(key);
@@ -1561,8 +1561,8 @@ Datum urlencode_jsonb(PG_FUNCTION_ARGS)
 		}
 	}
 
-	if (si->len)
-		PG_RETURN_TEXT_P(cstring_to_text_with_len(si->data, si->len));
+	if (si.len)
+		PG_RETURN_TEXT_P(cstring_to_text_with_len(si.data, si.len));
 	else
 		PG_RETURN_NULL();
 }
