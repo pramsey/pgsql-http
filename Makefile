@@ -21,7 +21,7 @@ LIBS += $(shell $(CURL_CONFIG) --libs)
 SHLIB_LINK := $(LIBS)
 
 ifdef DEBUG
-COPT			+= -O0
+COPT			+= -O0 -Werror
 endif
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)

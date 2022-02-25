@@ -180,22 +180,20 @@ BEGIN
     SELECT status FROM http_get('https://httpbin.org/status/555');
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE EXCEPTION 'Failed to connect';
+        RAISE WARNING 'Failed to connect';
 END;
 $$;
-ERROR:  Failed to connect
-CONTEXT:  PL/pgSQL function inline_code_block line 6 at RAISE
+WARNING:  Failed to connect
 -- Still an error
 DO $$
 BEGIN
     SELECT status FROM http_get('https://httpbin.org/status/555');
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE EXCEPTION 'Failed to connect';
+        RAISE WARNING 'Failed to connect';
 END;
 $$;
-ERROR:  Failed to connect
-CONTEXT:  PL/pgSQL function inline_code_block line 6 at RAISE
+WARNING:  Failed to connect
 -- Reset options
 SELECT http_reset_curlopt();
  http_reset_curlopt 

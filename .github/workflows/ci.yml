@@ -11,25 +11,51 @@ jobs:
     runs-on: ubuntu-20.04
 
     env:
-      PG_VERSION: 14
+      PGVER: 10
       OS_NAME: focal-pgdg
+      OS_PGVER: 14
+
+
+    name: "CI"
+    strategy:
+      matrix:
+        ci:
+        - { PGVER: 9.5 }
+        - { PGVER: 9.6 }
+        - { PGVER: 10 }
+        - { PGVER: 11 }
+        - { PGVER: 12 }
+        - { PGVER: 13 }
+        - { PGVER: 14 }
 
     steps:
 
     - name: 'Check Out'
       uses: actions/checkout@v2
 
-    - name: 'Install'
+    - name: 'Uninstall PostgreSQL'
       run: |
+        sudo apt-get -y -f --ignore-missing --purge remove postgresql postgresql-common postgresql-$OS_PGVER
+        sudo apt-get -y autoremove
+        sudo rm -rf /var/lib/postgresql
+
+    - name: 'Install PostgreSQL'
+      run: |
+        export PGVER=${{ matrix.ci.PGVER }}
+        export PGDATA=/var/lib/postgresql/$PGVER/main
+        export PGETC=/etc/postgresql/$PGVER/main
+        export PGBIN=/usr/lib/postgresql/$PGVER/bin
         curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-        sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $OS_NAME main $PG_VERSION"
-        sudo apt-get -y install libcurl4-gnutls-dev postgresql-server-dev-$PG_VERSION
-        sudo cp ./ci/pg_hba.conf /etc/postgresql/$PG_VERSION/main/pg_hba.conf
-        sudo systemctl start postgresql.service
+        sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $OS_NAME main $PGVER"
+        sudo apt-get -y install libcurl4-gnutls-dev postgresql-server-dev-$PGVER postgresql-client-$PGVER postgresql-$PGVER
+        sudo su postgres -c "$PGBIN/pg_ctl --pgdata $PGDATA stop"
+        # sudo $PGBIN/pg_ctlcluster $PGVER main stop
+        sudo cp ./ci/pg_hba.conf $PGETC/pg_hba.conf
+        sudo su postgres -c "$PGBIN/pg_ctl --pgdata $PGDATA start -o '-c config_file=$PGETC/postgresql.conf'"
 
     - name: 'Build & Test'
       run: |
-        export PATH=/usr/lib/postgresql/$PG_VERSION/bin/:$PATH
-        make
+        export PATH=/usr/lib/postgresql/$PGVER/bin/:$PATH
+        make DEBUG=1 all
         sudo make install
         PGUSER=postgres make installcheck || (cat regression.diffs && /bin/false)

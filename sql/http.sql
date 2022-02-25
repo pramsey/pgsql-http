@@ -112,7 +112,7 @@ BEGIN
     SELECT status FROM http_get('https://httpbin.org/status/555');
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE EXCEPTION 'Failed to connect';
+        RAISE WARNING 'Failed to connect';
 END;
 $$;
 -- Still an error
@@ -121,7 +121,7 @@ BEGIN
     SELECT status FROM http_get('https://httpbin.org/status/555');
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE EXCEPTION 'Failed to connect';
+        RAISE WARNING 'Failed to connect';
 END;
 $$;
 -- Reset options
