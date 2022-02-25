@@ -15,7 +15,6 @@ jobs:
     # We remove that, and then install the
     # version we are testing.
     env:
-      OS_NAME: focal-pgdg
       OS_PGVER: 14
 
 
@@ -48,7 +47,10 @@ jobs:
         export PGDATA=/var/lib/postgresql/$PGVER/main
         export PGETC=/etc/postgresql/$PGVER/main
         export PGBIN=/usr/lib/postgresql/$PGVER/bin
-        curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        source /etc/os-release
+        export OS_NAME=${UBUNTU_CODENAME}-pgdg
+        env
+        curl -L https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
         sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $OS_NAME main $PGVER"
         sudo apt-get -y install libcurl4-gnutls-dev postgresql-server-dev-$PGVER postgresql-client-$PGVER postgresql-$PGVER
         sudo su postgres -c "$PGBIN/pg_ctl --pgdata $PGDATA stop"
