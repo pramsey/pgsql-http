@@ -21,10 +21,10 @@ jobs:
       matrix:
         ci:
         - { PGVER: 10 }
-        # - { PG_VERSION: 11 }
-        # - { PG_VERSION: 12 }
-        # - { PG_VERSION: 13 }
-        # - { PG_VERSION: 14 }
+        # - { PGVER: 11 }
+        # - { PGVER: 12 }
+        # - { PGVER: 13 }
+        # - { PGVER: 14 }
 
     steps:
 
@@ -32,6 +32,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: 'Uninstall PostgreSQL'
+      run: |
         sudo apt-get -y -f --ignore-missing --purge remove postgresql postgresql-common postgresql-$OS_PGVER postgresql-server-dev-$OSPGVER postgresql-client-common postgresql-client-$OSPGVER libpq-dev
         sudo apt-get -y autoremove
         sudo rm -rf /var/lib/postgresql
