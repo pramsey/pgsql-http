@@ -10,12 +10,13 @@ jobs:
 
     runs-on: ubuntu-20.04
 
-    # Github Runner for Ubuntu 20
+    # Github Runner for Ubuntu 20.04
     # has PgSQL 14 installed by default
     # We remove that, and then install the
     # version we are testing.
     env:
       OS_PGVER: 14
+      OS_NAME: focal-pgdg
 
 
     name: "CI"
@@ -47,8 +48,6 @@ jobs:
         export PGDATA=/var/lib/postgresql/$PGVER/main
         export PGETC=/etc/postgresql/$PGVER/main
         export PGBIN=/usr/lib/postgresql/$PGVER/bin
-        source /etc/os-release
-        export OS_NAME=${UBUNTU_CODENAME}-pgdg
         env
         curl -L https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
         sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $OS_NAME main $PGVER"
