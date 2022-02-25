@@ -10,6 +10,8 @@ This extension is for that.
 
 ## Examples
 
+URL encode a string.
+
 ```sql
 SELECT urlencode('my special string''s & things?');
 ```
@@ -19,6 +21,9 @@ SELECT urlencode('my special string''s & things?');
  my+special+string%27s+%26+things%3F
 (1 row)
 ```
+
+URL encode a JSON associative array.
+
 ```sql
 SELECT urlencode(jsonb_build_object('name','Colin & James','rate','50%'));
 ```
@@ -28,6 +33,9 @@ SELECT urlencode(jsonb_build_object('name','Colin & James','rate','50%'));
  name=Colin+%26+James&rate=50%25
 (1 row)
 ```
+
+Run a GET request and see the content.
+
 ```sql
 SELECT content FROM http_get('http://httpbin.org/ip');
 ```
@@ -37,6 +45,9 @@ SELECT content FROM http_get('http://httpbin.org/ip');
  {"origin":"24.69.186.43"}                          +
 (1 row)
 ```
+
+Run a GET request with an Authorization header.
+
 ```sql
 SELECT content::json->'headers'->>'Authorization' FROM http((
           'GET',
@@ -52,6 +63,9 @@ SELECT content::json->'headers'->>'Authorization' FROM http((
  Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
 (1 row)
 ```
+
+Read the `status` and `content` fields out of a `http_response` object.
+
 ```sql
 SELECT status, content_type FROM http_get('http://httpbin.org/');
 ```
@@ -61,6 +75,9 @@ SELECT status, content_type FROM http_get('http://httpbin.org/');
     200 | text/html; charset=utf-8
 (1 row)
 ```
+
+Show all the `http_header` in an `http_response` object.
+
 ```sql
 SELECT (unnest(headers)).* FROM http_get('http://httpbin.org/');
 ```
@@ -78,6 +95,9 @@ SELECT (unnest(headers)).* FROM http_get('http://httpbin.org/');
  X-Processed-Time                 | 0.0208520889282
  Via                              | 1.1 vegur
 ```
+
+Use the PUT command to send a simple text document to a server.
+
 ```sql
 SELECT status, content_type, content::json->>'data' AS data
   FROM http_put('http://httpbin.org/put', 'some text', 'text/plain');
@@ -87,6 +107,9 @@ SELECT status, content_type, content::json->>'data' AS data
 --------+------------------+-----------
     200 | application/json | some text
 ```
+
+Use the PATCH command to send a simple JSON document to a server.
+
 ```sql
 SELECT status, content_type, content::json->>'data' AS data
   FROM http_patch('http://httpbin.org/patch', '{"this":"that"}', 'application/json');
@@ -96,6 +119,9 @@ SELECT status, content_type, content::json->>'data' AS data
 --------+------------------+------------------
     200 | application/json | '{"this":"that"}'
 ```
+
+Use the DELETE command to request resource deletion.
+
 ```sql
 SELECT status, content_type, content::json->>'url' AS url
   FROM http_delete('http://httpbin.org/delete');
@@ -201,7 +227,9 @@ As seen in the examples, you can unspool the array of `http_header` tuples into 
 * `http_header(field VARCHAR, value VARCHAR)` returns `http_header`
 * `http(request http_request)` returns `http_response`
 * `http_get(uri VARCHAR)` returns `http_response`
+* `http_get(uri VARCHAR, data JSONB)` returns `http_response`
 * `http_post(uri VARCHAR, content VARCHAR, content_type VARCHAR)` returns `http_response`
+* `http_post(uri VARCHAR, data JSONB)` returns `http_response`
 * `http_put(uri VARCHAR, content VARCHAR, content_type VARCHAR)` returns `http_response`
 * `http_patch(uri VARCHAR, content VARCHAR, content_type VARCHAR)` returns `http_response`
 * `http_delete(uri VARCHAR)` returns `http_response`
@@ -210,6 +238,7 @@ As seen in the examples, you can unspool the array of `http_header` tuples into 
 * `http_reset_curlopt()` returns `boolean`
 * `http_list_curlopt()` returns `setof(curlopt text, value text)`
 * `urlencode(string VARCHAR)` returns `text`
+* `urlencode(data JSONB)` returns `text`
 
 ## CURL Options
 
