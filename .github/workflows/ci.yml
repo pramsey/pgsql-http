@@ -10,8 +10,11 @@ jobs:
 
     runs-on: ubuntu-20.04
 
+    # Github Runner for Ubuntu 20
+    # has PgSQL 14 installed by default
+    # We remove that, and then install the
+    # version we are testing.
     env:
-      PGVER: 10
       OS_NAME: focal-pgdg
       OS_PGVER: 14
 
