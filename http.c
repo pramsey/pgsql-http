@@ -45,11 +45,12 @@
 #include <funcapi.h>
 #include <access/genam.h>
 #include <access/htup.h>
-#include <access/table.h>
+#include <access/sysattr.h>
 #include <catalog/namespace.h>
 #include <catalog/pg_type.h>
 #include <catalog/pg_extension.h>
 #include <catalog/dependency.h>
+#include <catalog/indexing.h>
 #include <commands/extension.h>
 #include <lib/stringinfo.h>
 #include <mb/pg_wchar.h>
@@ -64,12 +65,23 @@
 #include <utils/fmgroids.h>
 #include <utils/guc.h>
 
-#if PG_VERSION_NUM >= 100000
-#include <utils/varlena.h>
+#if PG_VERSION_NUM >= 90300
+#  include <access/htup_details.h>
 #endif
 
-#if PG_VERSION_NUM >= 90300
-#include <access/htup_details.h>
+#if PG_VERSION_NUM >= 100000
+#  include <utils/varlena.h>
+#endif
+
+#if PG_VERSION_NUM >= 120000
+#  include <access/table.h>
+#else
+#  define table_open(rel, lock) heap_open((rel), (lock))
+#  define table_close(rel, lock) heap_close((rel), (lock))
+#endif
+
+#ifndef PG_GETARG_JSONB_P
+#define PG_GETARG_JSONB_P(x) DatumGetJsonb(PG_GETARG_DATUM(x))
 #endif
 
 /* CURL */
@@ -589,11 +601,15 @@ get_extension_schema(Oid ext_oid)
 	SysScanDesc scandesc;
 	HeapTuple	tuple;
 	ScanKeyData entry[1];
-
 	rel = table_open(ExtensionRelationId, AccessShareLock);
+#if PG_VERSION_NUM >= 120000
+	Oid pg_extension_oid = Anum_pg_extension_oid;
+#else
+	Oid pg_extension_oid = ObjectIdAttributeNumber;
+#endif
 
 	ScanKeyInit(&entry[0],
-				Anum_pg_extension_oid,
+				pg_extension_oid,
 				BTEqualStrategyNumber, F_OIDEQ,
 				ObjectIdGetDatum(ext_oid));
 
@@ -1495,8 +1511,19 @@ Datum urlencode_jsonb(PG_FUNCTION_ARGS)
 			key = pnstrdup(v.val.string.val, v.val.string.len);
 			key_enc = urlencode_cstr(v.val.string.val, v.val.string.len);
 
-			/* Read and encode the value */
+			/* Read the value for this key */
+#if PG_VERSION_NUM < 130000
+			{
+			    JsonbValue  k;
+			    k.type = jbvString;
+			    k.val.string.val = key;
+			    k.val.string.len = strlen(key);
+			    v = *findJsonbValueFromContainer(&jb->root, JB_FOBJECT, &k);
+			}
+#else
 			getKeyJsonValueFromContainer(&jb->root, key, strlen(key), &v);
+#endif
+			/* Read and encode the value */
  			switch(v.type)
  			{
  				case jbvString: {
