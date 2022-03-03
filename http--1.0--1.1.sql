@@ -56,9 +56,9 @@ CREATE OR REPLACE FUNCTION http_put(uri VARCHAR, content VARCHAR, content_type V
     AS $$ SELECT http(('PUT', $1, NULL, $3, $2)::http_request) $$
     LANGUAGE 'sql';
 
-CREATE OR REPLACE FUNCTION http_delete(uri VARCHAR)
+CREATE OR REPLACE FUNCTION http_delete(uri VARCHAR, content VARCHAR, content_type VARCHAR)
 	RETURNS http_response
-	AS $$ SELECT http(('DELETE', $1, NULL, NULL, NULL)::http_request) $$
+	AS $$ SELECT http(('DELETE', $1, NULL, $3, $2)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION urlencode(string VARCHAR)
