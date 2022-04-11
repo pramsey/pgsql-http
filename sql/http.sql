@@ -39,15 +39,23 @@ from http(('GET', 'https://httpbin.org/anything', NULL, 'application/json', '{"s
 
 -- DELETE
 SELECT status,
-content::json->'args' AS args,
+content::json->'args'->>'foo' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_delete('https://httpbin.org/anything?foo=bar');
 
+-- DELETE with payload
+SELECT status,
+content::json->'args'->>'foo' AS args,
+content::json->'url' AS url,
+content::json->'method' AS method,
+content::json->'data' AS data
+FROM http_delete('https://httpbin.org/anything?foo=bar', 'payload', 'text/plain');
+
 -- PUT
 SELECT status,
 content::json->'data' AS data,
-content::json->'args' AS args,
+content::json->'args'->>'foo' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_put('https://httpbin.org/anything?foo=bar','payload','text/plain');
@@ -55,7 +63,7 @@ FROM http_put('https://httpbin.org/anything?foo=bar','payload','text/plain');
 -- PATCH
 SELECT status,
 content::json->'data' AS data,
-content::json->'args' AS args,
+content::json->'args'->>'foo' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_patch('https://httpbin.org/anything?foo=bar','{"this":"that"}','application/json');
@@ -63,17 +71,25 @@ FROM http_patch('https://httpbin.org/anything?foo=bar','{"this":"that"}','applic
 -- POST
 SELECT status,
 content::json->'data' AS data,
-content::json->'args' AS args,
+content::json->'args'->>'foo' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_post('https://httpbin.org/anything?foo=bar','payload','text/plain');
 
--- POST with data
+-- POST with json data
 SELECT status,
 content::json->'form'->>'this' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
 FROM http_post('https://httpbin.org/anything', jsonb_build_object('this', 'that'));
+
+-- POST with data
+SELECT status,
+content::json->'form'->>'key1' AS key1,
+content::json->'form'->>'key2' AS key2,
+content::json->'url' AS url,
+content::json->'method' AS method
+FROM http_post('https://httpbin.org/anything', 'key1=value1&key2=value2','application/x-www-form-urlencoded');
 
 -- HEAD
 SELECT lower(field) AS field, value

@@ -1,3 +1,3 @@
-default_version = '1.4'
+default_version = '1.5'
 module_pathname = '$libdir/http'
 comment = 'HTTP client for PostgreSQL, allows web page retrieval inside the database.'
