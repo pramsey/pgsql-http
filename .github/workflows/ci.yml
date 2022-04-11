@@ -23,8 +23,6 @@ jobs:
     strategy:
       matrix:
         ci:
-        - { PGVER: 9.5 }
-        - { PGVER: 9.6 }
         - { PGVER: 10 }
         - { PGVER: 11 }
         - { PGVER: 12 }
