@@ -10,7 +10,7 @@ ALTER DOMAIN http_method ADD CHECK (
 
 CREATE OR REPLACE FUNCTION http_head(uri VARCHAR)
     RETURNS http_response
-    AS $$ SELECT http(('HEAD', $1, NULL, NULL, NULL)::http_request) $$
+    AS $$ SELECT @extschema@.http(('HEAD', $1, NULL, NULL, NULL)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_set_curlopt (curlopt VARCHAR, value VARCHAR) 

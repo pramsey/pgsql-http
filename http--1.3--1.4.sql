@@ -17,10 +17,10 @@ CREATE OR REPLACE FUNCTION urlencode(data JSONB)
 
 CREATE OR REPLACE FUNCTION http_get(uri VARCHAR, data JSONB)
     RETURNS http_response
-    AS $$ SELECT http(('GET', $1 || '?' || urlencode($2), NULL, NULL, NULL)::http_request) $$
+    AS $$ SELECT @extschema@.http(('GET', $1 || '?' || urlencode($2), NULL, NULL, NULL)::http_request) $$
     LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION http_post(uri VARCHAR, data JSONB)
     RETURNS http_response
-    AS $$ SELECT http(('POST', $1, NULL, 'application/x-www-form-urlencoded', urlencode($2))::http_request) $$
+    AS $$ SELECT @extschema@.http(('POST', $1, NULL, 'application/x-www-form-urlencoded', urlencode($2))::http_request) $$
     LANGUAGE 'sql';
