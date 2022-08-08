@@ -325,6 +325,16 @@ If you have PostgreSQL (>= 9.3) devel packages and CURL devel packages installed
 
 If you already installed a previous version and you just want to upgrade, then `ALTER EXTENSION http UPDATE`.
 
+#### Compiling for Apt based systems, using apt postgresql packages
+
+Refer to https://wiki.postgresql.org/wiki/Apt for pulling packages from apt.postgresql.org repo
+```
+# replace the postgresql-server-dev-14 with your current version
+sudo apt install postgresql-server-dev-14 libcurl4-openssl-dev make g++
+make
+sudo make install
+```
+
 ### Windows
 
 There is a build available at [postgresonline](http://www.postgresonline.com/journal/archives/371-http-extension.html), not maintained by me.
