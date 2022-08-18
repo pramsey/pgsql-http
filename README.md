@@ -37,7 +37,8 @@ SELECT urlencode(jsonb_build_object('name','Colin & James','rate','50%'));
 Run a GET request and see the content.
 
 ```sql
-SELECT content FROM http_get('http://httpbin.org/ip');
+SELECT content
+  FROM http_get('http://httpbin.org/ip');
 ```
 ```
            content
@@ -49,7 +50,8 @@ SELECT content FROM http_get('http://httpbin.org/ip');
 Run a GET request with an Authorization header.
 
 ```sql
-SELECT content::json->'headers'->>'Authorization' FROM http((
+SELECT content::json->'headers'->>'Authorization'
+  FROM http((
           'GET',
            'http://httpbin.org/headers',
            ARRAY[http_header('Authorization','Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9')],
@@ -67,7 +69,8 @@ SELECT content::json->'headers'->>'Authorization' FROM http((
 Read the `status` and `content` fields out of a `http_response` object.
 
 ```sql
-SELECT status, content_type FROM http_get('http://httpbin.org/');
+SELECT status, content_type
+  FROM http_get('http://httpbin.org/');
 ```
 ```
  status |       content_type
@@ -79,7 +82,8 @@ SELECT status, content_type FROM http_get('http://httpbin.org/');
 Show all the `http_header` in an `http_response` object.
 
 ```sql
-SELECT (unnest(headers)).* FROM http_get('http://httpbin.org/');
+SELECT (unnest(headers)).*
+  FROM http_get('http://httpbin.org/');
 ```
 ```
               field               |             value
