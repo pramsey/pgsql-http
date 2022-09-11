@@ -36,7 +36,7 @@ CREATE OR REPLACE FUNCTION http_header (field VARCHAR, value VARCHAR)
     AS $$ SELECT $1, $2 $$ 
     LANGUAGE 'sql';
 
-CREATE OR REPLACE FUNCTION http(request http_request)
+CREATE OR REPLACE FUNCTION http(request @extschema@.http_request)
     RETURNS http_response
     AS 'MODULE_PATHNAME', 'http_request'
     LANGUAGE 'c';
