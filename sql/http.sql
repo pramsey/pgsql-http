@@ -101,9 +101,8 @@ WHERE field ILIKE 'Abcde';
 
 -- Follow redirect
 SELECT status,
-content::json->'args' AS args,
 content::json->'url' AS url
-FROM http_get('https://httpbingo.org/redirect-to?url=https%3A%2F%2Fhttpbingo%2Eorg%2Fget%3Ffoo%3Dbar');
+FROM http_get('https://httpbingo.org/redirect-to?url=get');
 
 -- Request image
 WITH
