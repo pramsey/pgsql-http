@@ -317,7 +317,7 @@ void _PG_init(void)
 							   g_curlopt_config_file,
 							   NULL,
 							   PGC_SIGHUP,
-							   GUC_NOT_IN_SAMPLE,
+							   GUC_NOT_IN_SAMPLE | GUC_SUPERUSER_ONLY | GUC_NO_SHOW_ALL | GUC_NO_RESET_ALL,
 							   NULL,
 							   NULL,
 							   NULL);
