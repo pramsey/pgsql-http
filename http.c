@@ -196,6 +196,7 @@ static size_t http_readback(void *buffer, size_t size, size_t nitems, void *inst
 /* Global variables */
 bool g_use_keepalive;
 int g_timeout_msec;
+char **g_curlopt_config_file;
 
 CURL * g_http_handle = NULL;
 List * g_curl_opts = NIL;
@@ -308,6 +309,17 @@ void _PG_init(void)
 							NULL,
 							NULL,
 							NULL);
+
+	DefineCustomStringVariable("http.curlopt_config_file",
+							   "file of key-value CURLOPT settings used on every request",
+							   NULL,
+							   g_curlopt_config_file,
+							   NULL,
+							   PGC_SIGHUP,
+							   GUC_NOT_IN_SAMPLE,
+							   NULL,
+							   NULL,
+							   NULL);
 
 #ifdef HTTP_MEM_CALLBACKS
 	/* Use PgSQL memory management in Curl */
