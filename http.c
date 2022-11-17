@@ -969,6 +969,10 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 		if (!opt->curlopt_str) break;
 		if (strcasecmp(opt->curlopt_str, curlopt) == 0)
 		{
+			if (opt->from_curlopt_config_file) {
+				elog(ERROR, "curl option '%s' is set by a configuration file and cannot be changed", curlopt);
+				PG_RETURN_BOOL(false);
+			}
 			if (opt->curlopt_val) pfree(opt->curlopt_val);
 			opt->curlopt_val = MemoryContextStrdup(CacheMemoryContext, value);
 			PG_RETURN_BOOL(set_curlopt(handle, opt));
