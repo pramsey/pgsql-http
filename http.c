@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <limits.h>	/* INT_MAX */
 #include <signal.h> /* SIGINT */
+#include <stdio.h>
 
 /* PostgreSQL */
 #include <postgres.h>
@@ -193,11 +194,12 @@ void _PG_init(void);
 void _PG_fini(void);
 static size_t http_writeback(void *contents, size_t size, size_t nmemb, void *userp);
 static size_t http_readback(void *buffer, size_t size, size_t nitems, void *instream);
+void http_read_curlopt_config_file(const char *newval, void* extra);
 
 /* Global variables */
 bool g_use_keepalive;
 int g_timeout_msec;
-char **g_curlopt_config_file;
+char *g_curlopt_config_file;
 
 CURL * g_http_handle = NULL;
 List * g_curl_opts = NIL;
@@ -314,12 +316,12 @@ void _PG_init(void)
 	DefineCustomStringVariable("http.curlopt_config_file",
 							   "file of key-value CURLOPT settings used on every request",
 							   NULL,
-							   g_curlopt_config_file,
+							   &g_curlopt_config_file,
 							   NULL,
 							   PGC_SIGHUP,
 							   GUC_NOT_IN_SAMPLE | GUC_SUPERUSER_ONLY | GUC_NO_SHOW_ALL | GUC_NO_RESET_ALL,
 							   NULL,
-							   NULL,
+							   http_read_curlopt_config_file,
 							   NULL);
 
 #ifdef HTTP_MEM_CALLBACKS
@@ -356,6 +358,62 @@ void _PG_fini(void)
 
 	curl_global_cleanup();
 	elog(NOTICE, "Goodbye from HTTP %s", HTTP_VERSION);
+}
+
+#define MAX_FILE_LINE_LEN 1024
+
+/**
+* callback when http.curlopt_config_file is set
+*/
+void http_read_curlopt_config_file(const char *newval, void* extra)
+{
+	FILE*  file;
+	char   line[MAX_FILE_LINE_LEN];
+	char*  value;
+	char*  newline;
+	size_t i;
+
+	file = fopen(newval, "r");
+	if (file == NULL) {
+		elog(FATAL, "Unable to open curlopt_config_file '%s'", newval);
+		return;
+	}
+
+	// read key=value pairs
+	while(fgets(line, MAX_FILE_LINE_LEN, file)) {
+		// find the =
+		value = strchr(line, '=');
+		if (value == NULL) {
+			continue;
+		}
+		// null terminate the string at equal sign
+		*value = '\0';
+		// the value starts after the value (may be zero length)
+		value += 1;
+
+		// remove the newline if there is one
+		if ((newline = strchr(line, '\n')) != NULL) {
+			*newline = '\0';
+		}
+
+		// look for the setting in the array
+		for(i = 0;;) {
+			http_curlopt *opt = settable_curlopts + i++;
+			if (!opt->curlopt_str) {
+				elog(FATAL, "Setting '%s' is not a valid CURLOPT setting", line);
+				return;
+			}
+			if (strcasecmp(opt->curlopt_str, line) == 0)
+			{
+				opt->from_curlopt_config_file = true;
+				if (opt->curlopt_val) pfree(opt->curlopt_val);
+				opt->curlopt_val = MemoryContextStrdup(CacheMemoryContext, value);
+				break;
+			}
+		}
+	}
+
+	fclose(file);
 }
 
 /**
