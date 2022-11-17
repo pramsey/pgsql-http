@@ -873,6 +873,7 @@ Datum http_reset_curlopt(PG_FUNCTION_ARGS)
 	{
 		http_curlopt *opt = settable_curlopts + i++;
 		if (!opt->curlopt_str) break;
+		if (opt->from_curlopt_config_file) continue;
 		if (opt->curlopt_val) pfree(opt->curlopt_val);
 		opt->curlopt_val = NULL;
 	}
