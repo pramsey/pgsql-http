@@ -310,7 +310,16 @@ void _PG_init(void)
 							NULL);
 
 #ifdef HTTP_MEM_CALLBACKS
-	/* Use PgSQL memory management in Curl */
+	/* 
+	* Use PgSQL memory management in Curl 
+	* Warning, https://curl.se/libcurl/c/curl_global_init_mem.html
+	* notes "If you are using libcurl from multiple threads or libcurl 
+	* was built with the threaded resolver option then the callback 
+	* functions must be thread safe." PgSQL isn't multi-threaded,
+	* but we have no control over whether the "threaded resolver" is
+	* in use. We may need a semaphor to ensure our callbacks are
+	* accessed sequentially only.
+	*/
 	curl_global_init_mem(CURL_GLOBAL_ALL, http_malloc, http_free, http_realloc, pstrdup, http_calloc);
 #else
 	/* Set up Curl! */
