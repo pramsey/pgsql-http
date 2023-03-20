@@ -786,7 +786,9 @@ set_curlopt(CURL* handle, const http_curlopt *opt)
 	/* Argument is a long */
 	else if (opt->curlopt_type == CURLOPT_LONG)
 	{
-		long value_long = strtol(opt->curlopt_val, NULL, 10);
+		long value_long;
+		errno = 0;
+		value_long = strtol(opt->curlopt_val, NULL, 10);
 		if ( errno == EINVAL || errno == ERANGE )
 			elog(ERROR, "invalid integer provided for '%s'", opt->curlopt_str);
 
