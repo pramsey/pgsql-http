@@ -43,7 +43,7 @@ SELECT content
 ```
            content
 -----------------------------
- {"origin":"24.69.186.43"}                          +
+ {"origin":"24.69.186.43"}
 (1 row)
 ```
 
@@ -57,7 +57,7 @@ SELECT content::json->'headers'->>'Authorization'
            ARRAY[http_header('Authorization','Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9')],
            NULL,
            NULL
-        )::http_request)
+        )::http_request);
 ```
 ```
                    content
