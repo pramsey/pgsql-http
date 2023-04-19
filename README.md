@@ -25,12 +25,12 @@ SELECT urlencode('my special string''s & things?');
 URL encode a JSON associative array.
 
 ```sql
-SELECT urlencode(jsonb_build_object('name','Colin & James','rate','50%'));
+SELECT urlencode(jsonb_build_object('name','Colin & James','rate','50%')::text);
 ```
 ```
               urlencode
 -------------------------------------
- name=Colin+%26+James&rate=50%25
+ %7B%22name%22%3A+%22Colin+%26+James%22%2C+%22rate%22%3A+%2250%25%22%7D
 (1 row)
 ```
 
@@ -43,7 +43,7 @@ SELECT content
 ```
            content
 -----------------------------
- {"origin":"24.69.186.43"}                          +
+ {"origin":"24.69.186.43"}
 (1 row)
 ```
 
@@ -57,7 +57,7 @@ SELECT content::json->'headers'->>'Authorization'
            ARRAY[http_header('Authorization','Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9')],
            NULL,
            NULL
-        )::http_request)
+        )::http_request);
 ```
 ```
                    content
