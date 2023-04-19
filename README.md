@@ -25,12 +25,12 @@ SELECT urlencode('my special string''s & things?');
 URL encode a JSON associative array.
 
 ```sql
-SELECT urlencode(jsonb_build_object('name','Colin & James','rate','50%')::text);
+SELECT urlencode(jsonb_build_object('name','Colin & James','rate','50%'));
 ```
 ```
               urlencode
 -------------------------------------
- %7B%22name%22%3A+%22Colin+%26+James%22%2C+%22rate%22%3A+%2250%25%22%7D
+ name=Colin+%26+James&rate=50%25
 (1 row)
 ```
 
