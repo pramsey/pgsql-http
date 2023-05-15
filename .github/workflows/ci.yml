@@ -58,6 +58,6 @@ jobs:
     - name: 'Build & Test'
       run: |
         export PATH=/usr/lib/postgresql/$PGVER/bin/:$PATH
-        make DEBUG=1 all
+        PG_CFLAGS=-Werror make DEBUG=1 all
         sudo make install
         PGUSER=postgres make installcheck || (cat regression.diffs && /bin/false)
