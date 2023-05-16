@@ -310,11 +310,11 @@ void _PG_init(void)
 							NULL);
 
 #ifdef HTTP_MEM_CALLBACKS
-	/* 
-	* Use PgSQL memory management in Curl 
+	/*
+	* Use PgSQL memory management in Curl
 	* Warning, https://curl.se/libcurl/c/curl_global_init_mem.html
-	* notes "If you are using libcurl from multiple threads or libcurl 
-	* was built with the threaded resolver option then the callback 
+	* notes "If you are using libcurl from multiple threads or libcurl
+	* was built with the threaded resolver option then the callback
 	* functions must be thread safe." PgSQL isn't multi-threaded,
 	* but we have no control over whether the "threaded resolver" is
 	* in use. We may need a semaphor to ensure our callbacks are
@@ -598,7 +598,11 @@ header_array_to_slist(ArrayType *array, struct curl_slist *headers)
 
 	return headers;
 }
-
+/**
+ * This function is now exposed in PG16 and above
+ * so no need to redefine it for PG16 and above
+ */
+#if PG_VERSION_NUM < 160000
 /**
 * Look up the namespace the extension is installed in
 */
@@ -638,6 +642,7 @@ get_extension_schema(Oid ext_oid)
 
 	return result;
 }
+#endif
 
 /**
 * Look up the tuple description for a extension-defined type,
@@ -1179,13 +1184,13 @@ Datum http_request(PG_FUNCTION_ARGS)
 			{
 				/* Force the verb to be GET */
 				CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, "GET");
-			} 
-			else if( method == HTTP_DELETE ) 
+			}
+			else if( method == HTTP_DELETE )
 			{
 				/* Force the verb to be DELETE */
 				CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, "DELETE");
 			}
-			
+
 			CURL_SETOPT(g_http_handle, CURLOPT_POSTFIELDS, text_to_cstring(content_text));
 		}
 		else if ( method == HTTP_PUT || method == HTTP_PATCH )
