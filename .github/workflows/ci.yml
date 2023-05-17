@@ -31,6 +31,10 @@ jobs:
         sudo apt-get update
         sudo apt-get -y install postgresql-${{ matrix.ci.PGVER }} postgresql-server-dev-${{ matrix.ci.PGVER }}
 
+    - name: 'Install Curl'
+      run: |
+        sudo apt-get -y install libcurl4-gnutls-dev
+
     - name: 'Start PostgreSQL'
       run: |
         export PGDATA=/var/lib/postgresql/${{ matrix.ci.PGVER }}/main
