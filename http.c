@@ -782,6 +782,8 @@ set_curlopt(CURL* handle, const http_curlopt *opt)
 	CURLcode err = CURLE_OK;
 	char http_error_buffer[CURL_ERROR_SIZE];
 
+	memset(http_error_buffer, 0, sizeof(http_error_buffer));
+
 	/* Argument is a string */
 	if (opt->curlopt_type == CURLOPT_STRING)
 	{
