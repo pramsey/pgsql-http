@@ -8,22 +8,12 @@ on: [push, pull_request]
 jobs:
   linux:
 
-    runs-on: ubuntu-20.04
-
-    # Github Runner for Ubuntu 20.04
-    # has PgSQL 14 installed by default
-    # We remove that, and then install the
-    # version we are testing.
-    env:
-      OS_PGVER: 14
-      OS_NAME: focal-pgdg
-
+    runs-on: ubuntu-latest
 
     name: "CI"
     strategy:
       matrix:
         ci:
-        - { PGVER: 11 }
         - { PGVER: 12 }
         - { PGVER: 13 }
         - { PGVER: 14 }
@@ -34,30 +24,27 @@ jobs:
     - name: 'Check Out'
       uses: actions/checkout@v3
 
-    - name: 'Uninstall PostgreSQL'
-      run: |
-        sudo apt-get -y -f --ignore-missing --purge remove postgresql postgresql-common postgresql-$OS_PGVER
-        sudo apt-get -y autoremove
-        sudo rm -rf /var/lib/postgresql
-
     - name: 'Install PostgreSQL'
       run: |
-        export PGVER=${{ matrix.ci.PGVER }}
-        export PGDATA=/var/lib/postgresql/$PGVER/main
-        export PGETC=/etc/postgresql/$PGVER/main
-        export PGBIN=/usr/lib/postgresql/$PGVER/bin
-        env
-        curl -L https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-        sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $OS_NAME main $PGVER"
-        sudo apt-get -y install libcurl4-gnutls-dev postgresql-server-dev-$PGVER postgresql-client-$PGVER postgresql-$PGVER
-        sudo su postgres -c "$PGBIN/pg_ctl --pgdata $PGDATA stop"
-        # sudo $PGBIN/pg_ctlcluster $PGVER main stop
+        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg-snapshot main ${{ matrix.ci.PGVER }}" > /etc/apt/sources.list.d/pgdg.list'
+        curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
+        sudo apt-get update
+        sudo apt-get -y install postgresql-${{ matrix.ci.PGVER }} postgresql-server-dev-${{ matrix.ci.PGVER }}
+
+    - name: 'Start PostgreSQL'
+      run: |
+        export PGDATA=/var/lib/postgresql/${{ matrix.ci.PGVER }}/main
+        export PGETC=/etc/postgresql/${{ matrix.ci.PGVER }}/main
+        export PGBIN=/usr/lib/postgresql/${{ matrix.ci.PGVER }}/bin
         sudo cp ./ci/pg_hba.conf $PGETC/pg_hba.conf
-        sudo su postgres -c "$PGBIN/pg_ctl --pgdata $PGDATA start -o '-c config_file=$PGETC/postgresql.conf'"
+        sudo su postgres -c "$PGBIN/pg_ctl --pgdata $PGDATA start -o '-c config_file=$PGETC/postgresql.conf -p 5432'"
 
     - name: 'Build & Test'
       run: |
-        export PATH=/usr/lib/postgresql/$PGVER/bin/:$PATH
-        PG_CFLAGS=-Werror make DEBUG=1 all
-        sudo make install
+        export PATH=/usr/lib/postgresql/${{ matrix.ci.PGVER }}/bin/:$PATH
+        export PG_CONFIG=/usr/lib/postgresql/${{ matrix.ci.PGVER }}/bin/pg_config
+        export PG_CFLAGS=-Werror
+        make
+        sudo -E make PG_CONFIG=$PG_CONFIG install
         PGUSER=postgres make installcheck || (cat regression.diffs && /bin/false)
+
