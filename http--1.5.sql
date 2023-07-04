@@ -8,7 +8,8 @@ CHECK (
     VALUE ILIKE 'put' OR
     VALUE ILIKE 'delete' OR
     VALUE ILIKE 'patch' OR
-    VALUE ILIKE 'head'
+    VALUE ILIKE 'head' OR
+    VALUE ILIKE 'mkcol'
 );
 
 CREATE DOMAIN content_type AS text
