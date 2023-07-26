@@ -38,7 +38,7 @@ Run a GET request and see the content.
 
 ```sql
 SELECT content
-  FROM http_get('http://httpbin.org/ip');
+  FROM http_get('http://httpbun.org/ip');
 ```
 ```
            content
@@ -53,7 +53,7 @@ Run a GET request with an Authorization header.
 SELECT content::json->'headers'->>'Authorization'
   FROM http((
           'GET',
-           'http://httpbin.org/headers',
+           'http://httpbun.org/headers',
            ARRAY[http_header('Authorization','Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9')],
            NULL,
            NULL
@@ -70,7 +70,7 @@ Read the `status` and `content` fields out of a `http_response` object.
 
 ```sql
 SELECT status, content_type
-  FROM http_get('http://httpbin.org/');
+  FROM http_get('http://httpbun.org/');
 ```
 ```
  status |       content_type
@@ -83,28 +83,29 @@ Show all the `http_header` in an `http_response` object.
 
 ```sql
 SELECT (unnest(headers)).*
-  FROM http_get('http://httpbin.org/');
+  FROM http_get('http://httpbun.org/');
 ```
 ```
-              field               |             value
-----------------------------------+-------------------------------
- Connection                       | close
- Server                           | meinheld/0.6.1
- Date                             | Tue, 09 Jan 2018 18:40:30 GMT
- Content-Type                     | text/html; charset=utf-8
- Content-Length                   | 13011
- Access-Control-Allow-Origin      | *
- Access-Control-Allow-Credentials | true
- X-Powered-By                     | Flask
- X-Processed-Time                 | 0.0208520889282
- Via                              | 1.1 vegur
+      field       |                      value
+------------------+--------------------------------------------------
+ Server           | nginx
+ Date             | Wed, 26 Jul 2023 19:52:51 GMT
+ Content-Type     | text/html
+ Content-Length   | 162
+ Connection       | close
+ Location         | https://httpbun.org
+ server           | nginx
+ date             | Wed, 26 Jul 2023 19:52:51 GMT
+ content-type     | text/html
+ x-powered-by     | httpbun/3c0dc05883dd9212ac38b04705037d50b02f2596
+ content-encoding | gzip
 ```
 
 Use the PUT command to send a simple text document to a server.
 
 ```sql
 SELECT status, content_type, content::json->>'data' AS data
-  FROM http_put('http://httpbin.org/put', 'some text', 'text/plain');
+  FROM http_put('http://httpbun.org/put', 'some text', 'text/plain');
 ```
 ```
  status |   content_type   |   data
@@ -116,7 +117,7 @@ Use the PATCH command to send a simple JSON document to a server.
 
 ```sql
 SELECT status, content_type, content::json->>'data' AS data
-  FROM http_patch('http://httpbin.org/patch', '{"this":"that"}', 'application/json');
+  FROM http_patch('http://httpbun.org/patch', '{"this":"that"}', 'application/json');
 ```
 ```
  status |   content_type   |      data
@@ -128,19 +129,19 @@ Use the DELETE command to request resource deletion.
 
 ```sql
 SELECT status, content_type, content::json->>'url' AS url
-  FROM http_delete('http://httpbin.org/delete');
+  FROM http_delete('http://httpbun.org/delete');
 ```
 ```
  status |   content_type   |            url
 --------+------------------+---------------------------
-    200 | application/json | http://httpbin.org/delete
+    200 | application/json | http://httpbun.org/delete
 ```
 
 As a shortcut to send data to a GET request, pass a JSONB data argument.
 
 ```sql
 SELECT status, content::json->'args' AS args
-  FROM http_get('http://httpbin.org/get',
+  FROM http_get('http://httpbun.org/get',
                 jsonb_build_object('myvar','myval','foo','bar'));
 ```
 
@@ -148,7 +149,7 @@ To POST to a URL using a data payload instead of parameters embedded in the URL,
 
 ```sql
 SELECT status, content::json->'form' AS form
-  FROM http_post('http://httpbin.org/post',
+  FROM http_post('http://httpbun.org/post',
                  jsonb_build_object('myvar','myval','foo','bar'));
 ```
 
@@ -157,22 +158,21 @@ To access binary content, you must coerce the content from the default `varchar`
 ```sql
 WITH
   http AS (
-    SELECT * FROM http_get('http://httpbin.org/image/png')
+    SELECT * FROM http_get('https://httpbingo.org/image/png')
   ),
   headers AS (
     SELECT (unnest(headers)).* FROM http
   )
 SELECT
   http.content_type,
-  length(textsend(http.content)) AS length_binary,
-  headers.value AS length_headers
+  length(text_to_bytea(http.content)) AS length_binary
 FROM http, headers
-WHERE field = 'Content-Length';
+WHERE field ilike 'Content-Type';
 ```
 ```
- content_type | length_binary | length_headers
---------------+---------------+----------------
- image/png    |          8090 | 8090
+ content_type | length_binary
+--------------+---------------
+ image/png    |          8090
 ```
 To access only the headers you can do a HEAD-Request. This will not follow redirections.
 
@@ -188,9 +188,9 @@ FROM
         ON true;
 ```
 ```
- status |                         location
---------+-----------------------------------------------------------
-    302 | http://www.google.ch/?gfe_rd=cr&ei=ACESWLy_KuvI8zeghL64Ag
+ status |        location
+--------+------------------------
+    301 | http://www.google.com/
 ```
 
 ## Concepts
@@ -299,7 +299,7 @@ For such cases you can set the `CURLOPT_USERAGENT` option
 SELECT http_set_curlopt('CURLOPT_USERAGENT',
                         'Examplebot/2.1 (+http://www.example.com/bot.html) Contact abuse@example.com');
 
-SELECT status, content::json ->> 'user-agent' FROM http_get('http://httpbin.org/user-agent');
+SELECT status, content::json ->> 'user-agent' FROM http_get('http://httpbun.org/user-agent');
 ```
 ```
  status |                         user_agent
