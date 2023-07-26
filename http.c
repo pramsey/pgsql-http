@@ -780,7 +780,7 @@ static bool
 set_curlopt(CURL* handle, const http_curlopt *opt)
 {
 	CURLcode err = CURLE_OK;
-	char http_error_buffer[CURL_ERROR_SIZE];
+	char http_error_buffer[CURL_ERROR_SIZE] = "\0";
 
 	memset(http_error_buffer, 0, sizeof(http_error_buffer));
 
@@ -1009,7 +1009,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 	/* Processing */
 	CURLcode err;
-	char http_error_buffer[CURL_ERROR_SIZE];
+	char http_error_buffer[CURL_ERROR_SIZE] = "\0";
 
 	struct curl_slist *headers = NULL;
 	StringInfoData si_data;
