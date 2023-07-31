@@ -1161,18 +1161,18 @@ Datum http_request(PG_FUNCTION_ARGS)
 	{
 		text *content_text;
 		long content_size;
-		char *content_type;
+		char *content_type_2;
 		char buffer[1024];
 
 		/* Read the content type */
 		if ( nulls[REQ_CONTENT_TYPE] || ! values[REQ_CONTENT_TYPE] )
 			elog(ERROR, "http_request.content_type is NULL");
-		content_type = TextDatumGetCString(values[REQ_CONTENT_TYPE]);
+		content_type_2 = TextDatumGetCString(values[REQ_CONTENT_TYPE]);
 
 		/* Add content type to the headers */
-		snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
+		snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type_2);
 		headers = curl_slist_append(headers, buffer);
-		pfree(content_type);
+		pfree(content_type_2);
 
 		/* Read the content */
 		content_text = DatumGetTextP(values[REQ_CONTENT]);
