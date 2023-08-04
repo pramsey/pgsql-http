@@ -1195,21 +1195,21 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 			CURL_SETOPT(g_http_handle, CURLOPT_POSTFIELDS, text_to_cstring(content_text));
 		}
-		else if ( method == HTTP_PUT || method == HTTP_PATCH )
+		else if ( method == HTTP_PUT || method == HTTP_PATCH || method == HTTP_UNKNOWN )
 		{
 			if ( method == HTTP_PATCH )
 				CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, "PATCH");
+
+			/* Assume the user knows what they are doing and pass unchanged */
+			if ( method == HTTP_UNKNOWN )
+				CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, method_str);
+
 			initStringInfo(&si_read);
 			appendBinaryStringInfo(&si_read, VARDATA(content_text), content_size);
 			CURL_SETOPT(g_http_handle, CURLOPT_UPLOAD, 1);
 			CURL_SETOPT(g_http_handle, CURLOPT_READFUNCTION, http_readback);
 			CURL_SETOPT(g_http_handle, CURLOPT_READDATA, &si_read);
 			CURL_SETOPT(g_http_handle, CURLOPT_INFILESIZE, content_size);
-		}
-		else if (method == HTTP_UNKNOWN)
-		{
-			/* Assume the user knows what they are doing and pass unchanged */
-			CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, method_str);
 		}
 		else
 		{
