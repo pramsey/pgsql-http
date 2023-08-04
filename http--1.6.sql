@@ -1,17 +1,6 @@
 -- complain if script is sourced in psql, rather than via CREATE EXTENSION
 \echo Use "CREATE EXTENSION http" to load this file. \quit
-
-CREATE DOMAIN http_method AS text
-CHECK (
-    VALUE ILIKE 'get' OR
-    VALUE ILIKE 'post' OR
-    VALUE ILIKE 'put' OR
-    VALUE ILIKE 'delete' OR
-    VALUE ILIKE 'patch' OR
-    VALUE ILIKE 'head' OR
-    VALUE ILIKE 'mkcol'
-);
-
+CREATE DOMAIN http_method AS text;
 CREATE DOMAIN content_type AS text
 CHECK (
     VALUE ~ '^\S+\/\S+'

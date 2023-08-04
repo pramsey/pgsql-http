@@ -97,7 +97,8 @@ typedef enum {
 	HTTP_DELETE,
 	HTTP_PUT,
 	HTTP_HEAD,
-	HTTP_PATCH
+	HTTP_PATCH,
+	HTTP_UNKNOWN
 } http_method;
 
 /* Components (and postitions) of the http_request tuple type */
@@ -424,7 +425,7 @@ request_type(const char *method)
 	else if ( strcasecmp(method, "PATCH") == 0 )
 		return HTTP_PATCH;
 	else
-		return HTTP_GET;
+		return HTTP_UNKNOWN;
 }
 
 /**
@@ -1078,8 +1079,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		elog(ERROR, "http_request.method is NULL");
 	method_str = TextDatumGetCString(values[REQ_METHOD]);
 	method = request_type(method_str);
-	elog(DEBUG2, "pgsql-http: method '%s'", method_str);
-	pfree(method_str);
+	elog(DEBUG2, "pgsql-http: method_str: '%s', method: %d", method_str, method);
 
 	/* Set up global HTTP handle */
 	g_http_handle = http_get_handle();
@@ -1156,7 +1156,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		headers = header_array_to_slist(array, headers);
 	}
 
-	/* If we have a payload we send it, assuming we're either POST, GET, PATCH, PUT or DELETE */
+	/* If we have a payload we send it, assuming we're either POST, GET, PATCH, PUT or DELETE or UNKNOWN */
 	if ( ! nulls[REQ_CONTENT] && values[REQ_CONTENT] )
 	{
 		text *content_text;
@@ -1206,6 +1206,11 @@ Datum http_request(PG_FUNCTION_ARGS)
 			CURL_SETOPT(g_http_handle, CURLOPT_READDATA, &si_read);
 			CURL_SETOPT(g_http_handle, CURLOPT_INFILESIZE, content_size);
 		}
+		else if (method == HTTP_UNKNOWN)
+		{
+			/* Assume the user knows what they are doing and pass unchanged */
+			CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, method_str);
+		}
 		else
 		{
 			/* Never get here */
@@ -1225,7 +1230,12 @@ Datum http_request(PG_FUNCTION_ARGS)
 		/* If we had a content we do not reach that part */
 		elog(ERROR, "http_request.content is NULL");
 	}
+	else if ( method == HTTP_UNKNOWN ){
+		/* Assume the user knows what they are doing and pass unchanged */
+		CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, method_str);
+	}
 
+	pfree(method_str);
 	/* Set the headers */
 	CURL_SETOPT(g_http_handle, CURLOPT_HTTPHEADER, headers);
 
