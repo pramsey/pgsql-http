@@ -1079,8 +1079,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		elog(ERROR, "http_request.method is NULL");
 	method_str = TextDatumGetCString(values[REQ_METHOD]);
 	method = request_type(method_str);
-	elog(DEBUG2, "pgsql-http: method_str '%s'", method_str);
-	elog(DEBUG2, "pgsql-http: method '%d'", method);
+	elog(DEBUG2, "pgsql-http: method_str: '%s', method: %d", method_str, method);
 
 	/* Set up global HTTP handle */
 	g_http_handle = http_get_handle();
@@ -1209,7 +1208,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		}
 		else if (method == HTTP_UNKNOWN)
 		{
-			/** assume the user knows what they are doing and pass unchanged **/
+			/* Assume the user knows what they are doing and pass unchanged */
 			CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, method_str);
 		}
 		else
@@ -1232,7 +1231,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		elog(ERROR, "http_request.content is NULL");
 	}
 	else if ( method == HTTP_UNKNOWN ){
-		/** assume the user knows what they are doing and pass unchanged **/
+		/* Assume the user knows what they are doing and pass unchanged */
 		CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, method_str);
 	}
 
