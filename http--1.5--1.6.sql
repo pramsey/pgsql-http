@@ -1,15 +1,5 @@
 
-ALTER DOMAIN http_method drop CONSTRAINT http_method_check;
-
-ALTER DOMAIN http_method add CHECK (
-    VALUE ILIKE 'get' OR
-    VALUE ILIKE 'post' OR
-    VALUE ILIKE 'put' OR
-    VALUE ILIKE 'delete' OR
-    VALUE ILIKE 'patch' OR
-    VALUE ILIKE 'head' OR
-    VALUE ILIKE 'mkcol'
-);
+ALTER DOMAIN http_method DROP CONSTRAINT IF EXISTS http_method_check;
 
 CREATE FUNCTION text_to_bytea(data TEXT)
     RETURNS BYTEA
