@@ -230,7 +230,7 @@ SELECT http_set_curlopt('CURLOPT_TIMEOUT_MS', '10000');
  t
 (1 row)
 
-SELECT status FROM http_get('http://httpstat.us/200?sleep=7000');
+SELECT status FROM http_get('https://httpbun.org/delay/7');
  status 
 --------
     200

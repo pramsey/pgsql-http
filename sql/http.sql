@@ -146,4 +146,4 @@ SELECT status FROM http_get('https://httpbun.org/status/555');
 -- Alter the default timeout and then run a query that is longer than
 -- the default (5s), but shorter than the new timeout
 SELECT http_set_curlopt('CURLOPT_TIMEOUT_MS', '10000');
-SELECT status FROM http_get('http://httpstat.us/200?sleep=7000');
+SELECT status FROM http_get('https://httpbun.org/delay/7');
