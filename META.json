@@ -2,7 +2,7 @@
    "name": "http",
    "abstract": "HTTP client for PostgreSQL",
    "description": "HTTP allows you to get the content of a web page in a SQL function call.",
-   "version": "1.5.0",
+   "version": "1.6.0",
    "maintainer": [
       "Paul Ramsey <pramsey@cleverelephant.ca>"
    ],
@@ -21,9 +21,9 @@
    },
    "provides": {
      "http": {
-       "file": "http--1.5.sql",
+       "file": "http--1.6.sql",
        "docfile": "README.md",
-       "version": "1.5.0",
+       "version": "1.6.0",
        "abstract": "HTTP client for PostgreSQL"
      }
    },
