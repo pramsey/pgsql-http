@@ -1090,10 +1090,16 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Set the target URL */
 	CURL_SETOPT(g_http_handle, CURLOPT_URL, uri);
 
+
 	/* Restrict to just http/https. Leaving unrestricted */
 	/* opens possibility of users requesting file:/// urls */
 	/* locally */
+#if LIBCURL_VERSION_NUM >= 0x075400  /* 7.84.0 */
+	CURL_SETOPT(g_http_handle, CURLOPT_PROTOCOLS_STR, "http,https");
+#else
 	CURL_SETOPT(g_http_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+#endif
+
 
 	if ( g_use_keepalive )
 	{
