@@ -153,7 +153,7 @@ SELECT status, content::json->'form' AS form
                  jsonb_build_object('myvar','myval','foo','bar'));
 ```
 
-To access binary content, you must coerce the content from the default `varchar` representation to a `bytea` representation using the `text_to_bytea` function. Using the default `varchar::bytea` cast will **not work**, as the cast will stop the first time it hits a zero-valued byte (common in binary data).
+To access binary content, you must coerce the content from the default `varchar` representation to a `bytea` representation using the `text_to_bytea()` function, or the `textsend()` function. Using the default `varchar::bytea` cast will **not work**, as the cast will stop the first time it hits a zero-valued byte (common in binary data).
 
 ```sql
 WITH
