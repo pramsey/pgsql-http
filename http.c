@@ -146,6 +146,7 @@ static http_curlopt settable_curlopts[] = {
 	{ "CURLOPT_TIMEOUT", NULL, CURLOPT_TIMEOUT, CURLOPT_LONG, false },
 	{ "CURLOPT_TIMEOUT_MS", NULL, CURLOPT_TIMEOUT_MS, CURLOPT_LONG, false },
 	{ "CURLOPT_CONNECTTIMEOUT", NULL, CURLOPT_CONNECTTIMEOUT, CURLOPT_LONG, false },
+	{ "CURLOPT_CONNECTTIMEOUT_MS", NULL, CURLOPT_CONNECTTIMEOUT_MS, CURLOPT_LONG, false },
 	{ "CURLOPT_USERAGENT", NULL, CURLOPT_USERAGENT, CURLOPT_STRING, false },
 	{ "CURLOPT_USERPWD", NULL, CURLOPT_USERPWD, CURLOPT_STRING, false },
 	{ "CURLOPT_IPRESOLVE", NULL, CURLOPT_IPRESOLVE, CURLOPT_LONG, false },
@@ -838,7 +839,7 @@ http_get_handle()
 
 	/* Always want a default fast (1 second) connection timeout */
 	/* User can over-ride with http_set_curlopt() if they wish */
-	curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
+	curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT_MS, 1000);
 	curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 5000);
 
     /* Set the user agent. If not set, use PG_VERSION as default */
