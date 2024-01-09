@@ -8,7 +8,7 @@ SELECT http_set_curlopt('CURLOPT_TIMEOUT', '10');
 
 -- Status code
 SELECT status
-FROM http_get('https://httpbun.org/status/202');
+FROM http_get('https://httpbin.org/status/202');
  status 
 --------
     202
@@ -18,7 +18,7 @@ FROM http_get('https://httpbun.org/status/202');
 SELECT lower(field) AS field, value
 FROM (
 	SELECT (unnest(headers)).*
-	FROM http_get('https://httpbun.org/response-headers?Abcde=abcde')
+	FROM http_get('https://httpbin.org/response-headers?Abcde=abcde')
 ) a
 WHERE field ILIKE 'Abcde';
  field | value 
@@ -31,10 +31,10 @@ SELECT status,
 content::json->'args'->>'foo' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
-FROM http_get('https://httpbun.org/anything?foo=bar');
+FROM http_get('https://httpbin.org/anything?foo=bar');
  status | args |                  url                   | method 
 --------+------+----------------------------------------+--------
-    200 | bar  | "https://httpbun.org/anything?foo=bar" | "GET"
+    200 | bar  | "https://httpbin.org/anything?foo=bar" | "GET"
 (1 row)
 
 -- GET with data
@@ -42,10 +42,10 @@ SELECT status,
 content::json->'args'->>'this' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
-FROM http_get('https://httpbun.org/anything', jsonb_build_object('this', 'that'));
+FROM http_get('https://httpbin.org/anything', jsonb_build_object('this', 'that'));
  status | args |                   url                    | method 
 --------+------+------------------------------------------+--------
-    200 | that | "https://httpbun.org/anything?this=that" | "GET"
+    200 | that | "https://httpbin.org/anything?this=that" | "GET"
 (1 row)
 
 -- GET with data
@@ -54,10 +54,10 @@ content::json->'args' as args,
 content::json->>'data' as data,
 content::json->'url' as url,
 content::json->'method' as method
-from http(('GET', 'https://httpbun.org/anything', NULL, 'application/json', '{"search": "toto"}'));
+from http(('GET', 'https://httpbin.org/anything', NULL, 'application/json', '{"search": "toto"}'));
  status | args |        data        |              url               | method 
 --------+------+--------------------+--------------------------------+--------
-    200 | {}   | {"search": "toto"} | "https://httpbun.org/anything" | "GET"
+    200 | {}   | {"search": "toto"} | "https://httpbin.org/anything" | "GET"
 (1 row)
 
 -- DELETE
@@ -65,10 +65,10 @@ SELECT status,
 content::json->'args'->>'foo' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
-FROM http_delete('https://httpbun.org/anything?foo=bar');
+FROM http_delete('https://httpbin.org/anything?foo=bar');
  status | args |                  url                   |  method  
 --------+------+----------------------------------------+----------
-    200 | bar  | "https://httpbun.org/anything?foo=bar" | "DELETE"
+    200 | bar  | "https://httpbin.org/anything?foo=bar" | "DELETE"
 (1 row)
 
 -- DELETE with payload
@@ -77,10 +77,10 @@ content::json->'args'->>'foo' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method,
 content::json->'data' AS data
-FROM http_delete('https://httpbun.org/anything?foo=bar', 'payload', 'text/plain');
+FROM http_delete('https://httpbin.org/anything?foo=bar', 'payload', 'text/plain');
  status | args |                  url                   |  method  |   data    
 --------+------+----------------------------------------+----------+-----------
-    200 | bar  | "https://httpbun.org/anything?foo=bar" | "DELETE" | "payload"
+    200 | bar  | "https://httpbin.org/anything?foo=bar" | "DELETE" | "payload"
 (1 row)
 
 -- PUT
@@ -89,10 +89,10 @@ content::json->'data' AS data,
 content::json->'args'->>'foo' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
-FROM http_put('https://httpbun.org/anything?foo=bar','payload','text/plain');
+FROM http_put('https://httpbin.org/anything?foo=bar','payload','text/plain');
  status |   data    | args |                  url                   | method 
 --------+-----------+------+----------------------------------------+--------
-    200 | "payload" | bar  | "https://httpbun.org/anything?foo=bar" | "PUT"
+    200 | "payload" | bar  | "https://httpbin.org/anything?foo=bar" | "PUT"
 (1 row)
 
 -- PATCH
@@ -101,10 +101,10 @@ content::json->'data' AS data,
 content::json->'args'->>'foo' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
-FROM http_patch('https://httpbun.org/anything?foo=bar','{"this":"that"}','application/json');
+FROM http_patch('https://httpbin.org/anything?foo=bar','{"this":"that"}','application/json');
  status |         data          | args |                  url                   | method  
 --------+-----------------------+------+----------------------------------------+---------
-    200 | "{\"this\":\"that\"}" | bar  | "https://httpbun.org/anything?foo=bar" | "PATCH"
+    200 | "{\"this\":\"that\"}" | bar  | "https://httpbin.org/anything?foo=bar" | "PATCH"
 (1 row)
 
 -- POST
@@ -113,10 +113,10 @@ content::json->'data' AS data,
 content::json->'args'->>'foo' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
-FROM http_post('https://httpbun.org/anything?foo=bar','payload','text/plain');
+FROM http_post('https://httpbin.org/anything?foo=bar','payload','text/plain');
  status |   data    | args |                  url                   | method 
 --------+-----------+------+----------------------------------------+--------
-    200 | "payload" | bar  | "https://httpbun.org/anything?foo=bar" | "POST"
+    200 | "payload" | bar  | "https://httpbin.org/anything?foo=bar" | "POST"
 (1 row)
 
 -- POST with json data
@@ -124,10 +124,10 @@ SELECT status,
 content::json->'form'->>'this' AS args,
 content::json->'url' AS url,
 content::json->'method' AS method
-FROM http_post('https://httpbun.org/anything', jsonb_build_object('this', 'that'));
+FROM http_post('https://httpbin.org/anything', jsonb_build_object('this', 'that'));
  status | args |              url               | method 
 --------+------+--------------------------------+--------
-    200 | that | "https://httpbun.org/anything" | "POST"
+    200 | that | "https://httpbin.org/anything" | "POST"
 (1 row)
 
 -- POST with data
@@ -136,17 +136,17 @@ content::json->'form'->>'key1' AS key1,
 content::json->'form'->>'key2' AS key2,
 content::json->'url' AS url,
 content::json->'method' AS method
-FROM http_post('https://httpbun.org/anything', 'key1=value1&key2=value2','application/x-www-form-urlencoded');
+FROM http_post('https://httpbin.org/anything', 'key1=value1&key2=value2','application/x-www-form-urlencoded');
  status |  key1  |  key2  |              url               | method 
 --------+--------+--------+--------------------------------+--------
-    200 | value1 | value2 | "https://httpbun.org/anything" | "POST"
+    200 | value1 | value2 | "https://httpbin.org/anything" | "POST"
 (1 row)
 
 -- HEAD
 SELECT lower(field) AS field, value
 FROM (
 	SELECT (unnest(headers)).*
-	FROM http_head('https://httpbun.org/response-headers?Abcde=abcde')
+	FROM http_head('https://httpbin.org/response-headers?Abcde=abcde')
 ) a
 WHERE field ILIKE 'Abcde';
  field | value 
@@ -157,10 +157,10 @@ WHERE field ILIKE 'Abcde';
 -- Follow redirect
 SELECT status,
 content::json->'url' AS url
-FROM http_get('https://httpbun.org/redirect-to?url=get');
+FROM http_get('https://httpbin.org/redirect-to?url=get');
  status |            url            
 --------+---------------------------
-    200 | "https://httpbun.org/get"
+    200 | "https://httpbin.org/get"
 (1 row)
 
 -- Request image
@@ -191,7 +191,7 @@ SELECT http_set_curlopt('CURLOPT_PROXY', '127.0.0.1');
 -- Error because proxy is not there
 DO $$
 BEGIN
-    SELECT status FROM http_get('https://httpbun.org/status/555');
+    SELECT status FROM http_get('https://httpbin.org/status/555');
 EXCEPTION
     WHEN OTHERS THEN
         RAISE WARNING 'Failed to connect';
@@ -201,7 +201,7 @@ WARNING:  Failed to connect
 -- Still an error
 DO $$
 BEGIN
-    SELECT status FROM http_get('https://httpbun.org/status/555');
+    SELECT status FROM http_get('https://httpbin.org/status/555');
 EXCEPTION
     WHEN OTHERS THEN
         RAISE WARNING 'Failed to connect';
@@ -216,7 +216,7 @@ SELECT http_reset_curlopt();
 (1 row)
 
 -- Now it should work
-SELECT status FROM http_get('https://httpbun.org/status/555');
+SELECT status FROM http_get('https://httpbin.org/status/555');
  status 
 --------
     555
@@ -230,7 +230,7 @@ SELECT http_set_curlopt('CURLOPT_TIMEOUT_MS', '10000');
  t
 (1 row)
 
-SELECT status FROM http_get('https://httpbun.org/delay/7');
+SELECT status FROM http_get('https://httpbin.org/delay/7');
  status 
 --------
     200
