@@ -342,6 +342,15 @@ make
 sudo make install
 ```
 
+If there several PostgreSQL installations available, you might need to edit the Makefile before running `make` to something like this:
+
+```
+...
+#PG_CONFIG = pg_config
+PG_CONFIG = /usr/lib/postgresql/14/bin/pg_config
+...
+```
+
 ### Windows
 
 There is a build available at [postgresonline](http://www.postgresonline.com/journal/archives/371-http-extension.html), not maintained by me.
