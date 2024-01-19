@@ -38,7 +38,7 @@ Run a GET request and see the content.
 
 ```sql
 SELECT content
-  FROM http_get('http://httpbun.org/ip');
+  FROM http_get('http://httpbun.com/ip');
 ```
 ```
            content
@@ -53,7 +53,7 @@ Run a GET request with an Authorization header.
 SELECT content::json->'headers'->>'Authorization'
   FROM http((
           'GET',
-           'http://httpbun.org/headers',
+           'http://httpbun.com/headers',
            ARRAY[http_header('Authorization','Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9')],
            NULL,
            NULL
@@ -70,7 +70,7 @@ Read the `status` and `content` fields out of a `http_response` object.
 
 ```sql
 SELECT status, content_type
-  FROM http_get('http://httpbun.org/');
+  FROM http_get('http://httpbun.com/');
 ```
 ```
  status |       content_type
@@ -83,7 +83,7 @@ Show all the `http_header` in an `http_response` object.
 
 ```sql
 SELECT (unnest(headers)).*
-  FROM http_get('http://httpbun.org/');
+  FROM http_get('http://httpbun.com/');
 ```
 ```
       field       |                      value
@@ -105,7 +105,7 @@ Use the PUT command to send a simple text document to a server.
 
 ```sql
 SELECT status, content_type, content::json->>'data' AS data
-  FROM http_put('http://httpbun.org/put', 'some text', 'text/plain');
+  FROM http_put('http://httpbun.com/put', 'some text', 'text/plain');
 ```
 ```
  status |   content_type   |   data
@@ -117,7 +117,7 @@ Use the PATCH command to send a simple JSON document to a server.
 
 ```sql
 SELECT status, content_type, content::json->>'data' AS data
-  FROM http_patch('http://httpbun.org/patch', '{"this":"that"}', 'application/json');
+  FROM http_patch('http://httpbun.com/patch', '{"this":"that"}', 'application/json');
 ```
 ```
  status |   content_type   |      data
@@ -129,19 +129,19 @@ Use the DELETE command to request resource deletion.
 
 ```sql
 SELECT status, content_type, content::json->>'url' AS url
-  FROM http_delete('http://httpbun.org/delete');
+  FROM http_delete('http://httpbun.com/delete');
 ```
 ```
  status |   content_type   |            url
 --------+------------------+---------------------------
-    200 | application/json | http://httpbun.org/delete
+    200 | application/json | http://httpbun.com/delete
 ```
 
 As a shortcut to send data to a GET request, pass a JSONB data argument.
 
 ```sql
 SELECT status, content::json->'args' AS args
-  FROM http_get('http://httpbun.org/get',
+  FROM http_get('http://httpbun.com/get',
                 jsonb_build_object('myvar','myval','foo','bar'));
 ```
 
@@ -149,7 +149,7 @@ To POST to a URL using a data payload instead of parameters embedded in the URL,
 
 ```sql
 SELECT status, content::json->'form' AS form
-  FROM http_post('http://httpbun.org/post',
+  FROM http_post('http://httpbun.com/post',
                  jsonb_build_object('myvar','myval','foo','bar'));
 ```
 
@@ -302,7 +302,7 @@ For such cases you can set the `CURLOPT_USERAGENT` option
 SELECT http_set_curlopt('CURLOPT_USERAGENT',
                         'Examplebot/2.1 (+http://www.example.com/bot.html) Contact abuse@example.com');
 
-SELECT status, content::json ->> 'user-agent' FROM http_get('http://httpbun.org/user-agent');
+SELECT status, content::json ->> 'user-agent' FROM http_get('http://httpbun.com/user-agent');
 ```
 ```
  status |                         user_agent
