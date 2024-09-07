@@ -326,7 +326,13 @@ By default a 5 second timeout is set for the completion of a request.  If a diff
 
 ## Installation
 
-### UNIX
+### Debian / Ubuntu apt.postgresql.org
+Replace 17 with your version of PostgreSQL
+```
+apt install postgresql-17-http
+```
+
+### UNIX: Compile from Source
 
 If you have PostgreSQL (>= 9.3) devel packages and CURL devel packages installed (>= 0.7.20), you should have `pg_config` and `curl-config` on your path, so you should be able to just run `make` (or `gmake`), then `make install`, then in your database `CREATE EXTENSION http`.
 
