@@ -32,10 +32,10 @@ FROM http_get('https://httpbin.org/anything', jsonb_build_object('this', 'that')
 -- GET with data
 SELECT status,
 content::json->'args' as args,
-content::json->>'data' as data,
+(content::json)->>'data' as data,
 content::json->'url' as url,
 content::json->'method' as method
-from http(('GET', 'https://httpbin.org/anything', NULL, 'application/json', '{"search": "toto"}'));
+FROM http(('GET', 'https://httpbin.org/anything', NULL, 'application/json', '{"search": "toto"}'));
 
 -- DELETE
 SELECT status,
