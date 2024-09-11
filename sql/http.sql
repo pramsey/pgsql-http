@@ -101,7 +101,7 @@ WHERE field ILIKE 'Abcde';
 
 -- Follow redirect
 SELECT status,
-content::json->'url' AS url
+(content::json)->'url' AS url
 FROM http_get('https://httpbin.org/redirect-to?url=get');
 
 -- Request image
