@@ -124,9 +124,14 @@ enum {
 	HEADER_VALUE = 1
 } http_header_type;
 
+/*
+ * String/Long for strings and numbers, blob only for
+ * CURLOPT_SSLKEY_BLOB and CURLOPT_SSLCERT_BLOB
+ */
 typedef enum {
 	CURLOPT_STRING,
-	CURLOPT_LONG
+	CURLOPT_LONG,
+	CURLOPT_BLOB
 } http_curlopt_type;
 
 /* CURLOPT string/enum value mapping */
@@ -185,6 +190,10 @@ static http_curlopt settable_curlopts[] = {
 	{ "CURLOPT_PROXY_TLSAUTH_USERNAME", NULL, CURLOPT_PROXY_TLSAUTH_USERNAME, CURLOPT_STRING, false },
 	{ "CURLOPT_PROXY_TLSAUTH_PASSWORD", NULL, CURLOPT_PROXY_TLSAUTH_PASSWORD, CURLOPT_STRING, false },
 	{ "CURLOPT_PROXY_TLSAUTH_TYPE", NULL, CURLOPT_PROXY_TLSAUTH_TYPE, CURLOPT_STRING, false },
+#endif
+#if LIBCURL_VERSION_NUM >= 0x074700  /* 7.71.0 */
+	{ "CURLOPT_SSLKEY_BLOB", NULL, CURLOPT_SSLKEY_BLOB, CURLOPT_BLOB, false },
+	{ "CURLOPT_SSLCERT_BLOB", NULL, CURLOPT_SSLCERT_BLOB, CURLOPT_BLOB, false },
 #endif
 	{ NULL, NULL, 0, 0, false } /* Array null terminator */
 };
@@ -804,8 +813,23 @@ set_curlopt(CURL* handle, const http_curlopt *opt)
 		err = curl_easy_setopt(handle, opt->curlopt, value_long);
 		elog(DEBUG2, "pgsql-http: set '%s' to value '%ld', return value = %d", opt->curlopt_str, value_long, err);
 	}
+	/* Only used for CURLOPT_SSLKEY_BLOB and CURLOPT_SSLCERT_BLOB */
+	else if (opt->curlopt_type == CURLOPT_BLOB)
+	{
+		struct curl_blob blob;
+		blob.len = strlen(opt->curlopt_val) + 1;
+		blob.data = opt->curlopt_val;
+		blob.flags = CURL_BLOB_COPY;
+
+		err = curl_easy_setopt(handle, CURLOPT_SSLKEYTYPE, "PEM");
+		elog(DEBUG2, "pgsql-http: set 'CURLOPT_SSLKEYTYPE' to value 'PEM', return value = %d", err);
+
+		err = curl_easy_setopt(handle, opt->curlopt, &blob);
+		elog(DEBUG2, "pgsql-http: set '%s' to value '%s', return value = %d", opt->curlopt_str, opt->curlopt_val, err);
+	}
 	else
 	{
+		/* Never get here */
 		elog(ERROR, "invalid curlopt_type");
 	}
 
@@ -830,7 +854,7 @@ http_get_handle()
 	{
 		handle = curl_easy_init();
 	}
-	/* Always reset because we're going to infull the user */
+	/* Always reset because we are going to fill in the user */
 	/* set options down below */
 	else
 	{
