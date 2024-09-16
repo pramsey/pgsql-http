@@ -1224,7 +1224,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 				CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, "DELETE");
 			}
 
-			CURL_SETOPT(g_http_handle, CURLOPT_POSTFIELDS, text_to_cstring(content_text));
+			CURL_SETOPT(g_http_handle, CURLOPT_POSTFIELDS, (char *)(VARDATA(content_text)));
+			CURL_SETOPT(g_http_handle, CURLOPT_POSTFIELDSIZE, content_size);
 		}
 		else if ( method == HTTP_PUT || method == HTTP_PATCH || method == HTTP_UNKNOWN )
 		{
