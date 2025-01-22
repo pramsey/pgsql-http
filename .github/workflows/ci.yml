@@ -45,6 +45,10 @@ jobs:
         sudo cp ./ci/pg_hba.conf $PGETC/pg_hba.conf
         sudo su postgres -c "$PGBIN/pg_ctl --pgdata $PGDATA start -o '-c config_file=$PGETC/postgresql.conf -p 5432'"
 
+    - name: 'Start HttpBin Docker'
+      run: |
+        docker run -d -p 9080:80 kennethreitz/httpbin
+
     - name: 'Build & Test'
       run: |
         export PATH=/usr/lib/postgresql/${{ matrix.ci.PGVER }}/bin/:$PATH
