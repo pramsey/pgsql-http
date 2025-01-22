@@ -43,6 +43,7 @@
 #include <postgres.h>
 #include <fmgr.h>
 #include <funcapi.h>
+#include <miscadmin.h>
 #include <access/genam.h>
 #include <access/htup.h>
 #include <access/sysattr.h>
@@ -102,27 +103,27 @@ typedef enum {
 } http_method;
 
 /* Components (and postitions) of the http_request tuple type */
-enum {
+enum http_request_type {
 	REQ_METHOD = 0,
 	REQ_URI = 1,
 	REQ_HEADERS = 2,
 	REQ_CONTENT_TYPE = 3,
 	REQ_CONTENT = 4
-} http_request_type;
+};
 
 /* Components (and postitions) of the http_response tuple type */
-enum {
+enum http_response_type {
 	RESP_STATUS = 0,
 	RESP_CONTENT_TYPE = 1,
 	RESP_HEADERS = 2,
 	RESP_CONTENT = 3
-} http_response_type;
+};
 
 /* Components (and postitions) of the http_header tuple type */
-enum {
+enum http_header_type {
 	HEADER_FIELD = 0,
 	HEADER_VALUE = 1
-} http_header_type;
+};
 
 /*
  * String/Long for strings and numbers, blob only for
@@ -205,11 +206,11 @@ static size_t http_writeback(void *contents, size_t size, size_t nmemb, void *us
 static size_t http_readback(void *buffer, size_t size, size_t nitems, void *instream);
 
 /* Global variables */
-bool g_use_keepalive;
-int g_timeout_msec;
+static bool g_use_keepalive;
+static int g_timeout_msec;
 
-CURL * g_http_handle = NULL;
-List * g_curl_opts = NIL;
+static CURL * g_http_handle = NULL;
+// static List * g_curl_opts = NIL;
 
 /*
 * Interrupt support is dependent on CURLOPT_XFERINFOFUNCTION which is
@@ -217,43 +218,19 @@ List * g_curl_opts = NIL;
 */
 #if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 
-pqsigfunc pgsql_interrupt_handler = NULL;
-int http_interrupt_requested = 0;
-
 /*
 * To support request interruption, we have libcurl run the progress meter
-* callback frequently, and here we watch to see if PgSQL has flipped our
-* global 'http_interrupt_requested' flag. If it has been flipped,
-* the non-zero return value will cue libcurl to abort the transfer,
-* leading to a CURLE_ABORTED_BY_CALLBACK return on the curl_easy_perform()
+* callback frequently, and here we watch to see if PgSQL has flipped
+* the global QueryCancelPending || ProcDiePending flags.
+* Curl should then return CURLE_ABORTED_BY_CALLBACK
+* to the curl_easy_perform() call.
 */
 static int
 http_progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
 {
-#ifdef WIN32
-	if (UNBLOCKED_SIGNAL_QUEUE())
-	{
-		pgwin32_dispatch_queued_signals();
-	}
-#endif
-	/* elog(DEBUG3, "http_interrupt_requested = %d", http_interrupt_requested); */
-	return http_interrupt_requested;
+	return QueryCancelPending || ProcDiePending;
 }
 
-/*
-* We register this callback with the PgSQL signal handler to
-* capture SIGINT and set our local interupt flag so that
-* libcurl will eventually notice that a cancel is requested
-*/
-static void
-http_interrupt_handler(int sig)
-{
-	/* Handle the signal here */
-	elog(DEBUG2, "http_interrupt_handler: sig=%d", sig);
-	http_interrupt_requested = sig;
-	pgsql_interrupt_handler(sig);
-	return;
-}
 #endif /* 7.39.0 */
 
 #undef HTTP_MEM_CALLBACKS
@@ -338,23 +315,11 @@ void _PG_init(void)
 #endif
 
 
-#if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
-	/* Register our interrupt handler (http_handle_interrupt) */
-	/* and store the existing one so we can call it when we're */
-	/* through with our work */
-	pgsql_interrupt_handler = pqsignal(SIGINT, http_interrupt_handler);
-	http_interrupt_requested = 0;
-#endif
 }
 
 /* Tear-down */
 void _PG_fini(void)
 {
-#if LIBCURL_VERSION_NUM >= 0x072700
-	/* Re-register the original signal handler */
-	pqsignal(SIGINT, pgsql_interrupt_handler);
-#endif
-
 	if (g_http_handle)
 	{
 		curl_easy_cleanup(g_http_handle);
@@ -1053,11 +1018,6 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Output */
 	HeapTuple tuple_out;
 
-#if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
-	/* Set up the interrupt flag */
-	http_interrupt_requested = 0;
-#endif
-
 	/* Version check */
 	http_check_curl_version(curl_version_info(CURLVERSION_NOW));
 
@@ -1296,23 +1256,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 		curl_easy_cleanup(g_http_handle);
 		g_http_handle = NULL;
 
-#if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
-		/*
-		* If the request was aborted by an interrupt request
-		* we need to ensure that the interrupt signal
-		* is in turn sent to the downstream interrupt handler
-		* that we stored when we set up our own handler.
-		*/
-		if (http_return == CURLE_ABORTED_BY_CALLBACK &&
-			pgsql_interrupt_handler &&
-			http_interrupt_requested)
-		{
-			elog(DEBUG2, "calling pgsql_interrupt_handler");
-			(*pgsql_interrupt_handler)(http_interrupt_requested);
-			http_interrupt_requested = 0;
-			elog(ERROR, "HTTP request cancelled");
-		}
-#endif
+		if (http_return == CURLE_ABORTED_BY_CALLBACK)
+			elog(ERROR, "canceling statement due to user request");
 
 		http_error(http_return, http_error_buffer);
 	}
