@@ -147,3 +147,16 @@ SELECT status FROM http_get('http://localhost:9080/status/555');
 -- the default (5s), but shorter than the new timeout
 SELECT http_set_curlopt('CURLOPT_TIMEOUT_MS', '10000');
 SELECT status FROM http_get('http://localhost:9080/delay/7');
+
+-- Check that statement interruption works
+SET statement_timeout = 200;
+CREATE TEMPORARY TABLE timer AS
+  SELECT now() AS start;
+SELECT *
+  FROM http_get('http://localhost:9080/delay/7');
+SELECT round(extract(epoch FROM now() - start) * 10) AS m
+  FROM timer;
+DROP TABLE timer;
+
+
+
