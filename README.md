@@ -1,6 +1,6 @@
 # PostgreSQL HTTP Client
 
-[![CI](https://github.com/pramsey/pgsql-http/workflows/CI/badge.svg?branch=master)](https://github.com/pramsey/pgsql-http/actions?query=branch%3Amaster)
+[![CI](https://github.com/pramsey/pgsql-http/workflows/CI/badge.svg)](https://github.com/pramsey/pgsql-http/actions)
 
 ## Motivation
 
