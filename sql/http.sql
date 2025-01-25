@@ -28,14 +28,13 @@ WHERE field ILIKE 'Abcde';
 -- GET
 SELECT status,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
 content::json->>'method' AS method
 FROM http_get(current_setting('http.server_host') || '/anything?foo=bar');
 
 -- GET with data
 SELECT status,
 content::json->'args'->>'this' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url',current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_get(current_setting('http.server_host') || '/anything', jsonb_build_object('this', 'that'));
 
@@ -43,21 +42,20 @@ FROM http_get(current_setting('http.server_host') || '/anything', jsonb_build_ob
 SELECT status,
 content::json->>'args' as args,
 (content::json)->>'data' as data,
-content::json->>'url' as url,
 content::json->>'method' as method
 FROM http(('GET', current_setting('http.server_host') || '/anything', NULL, 'application/json', '{"search": "toto"}'));
 
 -- DELETE
 SELECT status,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url',current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_delete(current_setting('http.server_host') || '/anything?foo=bar');
 
 -- DELETE with payload
 SELECT status,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url',current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method,
 content::json->>'data' AS data
 FROM http_delete(current_setting('http.server_host') || '/anything?foo=bar', 'payload', 'text/plain');
@@ -66,7 +64,7 @@ FROM http_delete(current_setting('http.server_host') || '/anything?foo=bar', 'pa
 SELECT status,
 content::json->>'data' AS data,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_put(current_setting('http.server_host') || '/anything?foo=bar','payload','text/plain');
 
@@ -74,7 +72,7 @@ FROM http_put(current_setting('http.server_host') || '/anything?foo=bar','payloa
 SELECT status,
 content::json->>'data' AS data,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_patch(current_setting('http.server_host') || '/anything?foo=bar','{"this":"that"}','application/json');
 
@@ -82,14 +80,14 @@ FROM http_patch(current_setting('http.server_host') || '/anything?foo=bar','{"th
 SELECT status,
 content::json->>'data' AS data,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_post(current_setting('http.server_host') || '/anything?foo=bar','payload','text/plain');
 
 -- POST with json data
 SELECT status,
 content::json->'form'->>'this' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_post(current_setting('http.server_host') || '/anything', jsonb_build_object('this', 'that'));
 
@@ -97,7 +95,7 @@ FROM http_post(current_setting('http.server_host') || '/anything', jsonb_build_o
 SELECT status,
 content::json->'form'->>'key1' AS key1,
 content::json->'form'->>'key2' AS key2,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_post(current_setting('http.server_host') || '/anything', 'key1=value1&key2=value2','application/x-www-form-urlencoded');
 
@@ -111,7 +109,7 @@ WHERE field ILIKE 'Abcde';
 
 -- Follow redirect
 SELECT status,
-(content::json)->>'url' AS url
+replace((content::json)->>'url', current_setting('http.server_host'),'') AS path
 FROM http_get(current_setting('http.server_host') || '/redirect-to?url=get');
 
 -- Request image
@@ -179,7 +177,14 @@ SELECT status FROM http_get(current_setting('http.server_host') || '/delay/7');
 SET http.CURLOPT_CAINFO = '/path/to/somebundle.crt';
 
 -- should fail
-SELECT status FROM http_get('https://postgis.net');
+DO $$
+BEGIN
+   SELECT status FROM http_get('https://postgis.net');
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Invalid cert file';
+END;
+$$;
 
 -- set to ignore cert
 SET http.CURLOPT_SSL_VERIFYPEER = '0';

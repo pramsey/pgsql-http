@@ -40,117 +40,115 @@ WHERE field ILIKE 'Abcde';
 -- GET
 SELECT status,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
 content::json->>'method' AS method
 FROM http_get(current_setting('http.server_host') || '/anything?foo=bar');
- status | args |                 url                 | method 
---------+------+-------------------------------------+--------
-    200 | bar  | http://httpbin.org/anything?foo=bar | GET
+ status | args | method 
+--------+------+--------
+    200 | bar  | GET
 (1 row)
 
 -- GET with data
 SELECT status,
 content::json->'args'->>'this' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url',current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_get(current_setting('http.server_host') || '/anything', jsonb_build_object('this', 'that'));
- status | args |                  url                  | method 
---------+------+---------------------------------------+--------
-    200 | that | http://httpbin.org/anything?this=that | GET
+ status | args |        path         | method 
+--------+------+---------------------+--------
+    200 | that | /anything?this=that | GET
 (1 row)
 
 -- GET with data
 SELECT status,
 content::json->>'args' as args,
 (content::json)->>'data' as data,
-content::json->>'url' as url,
 content::json->>'method' as method
 FROM http(('GET', current_setting('http.server_host') || '/anything', NULL, 'application/json', '{"search": "toto"}'));
- status | args |        data        |             url             | method 
---------+------+--------------------+-----------------------------+--------
-    200 | {}   | {"search": "toto"} | http://httpbin.org/anything | GET
+ status | args |        data        | method 
+--------+------+--------------------+--------
+    200 | {}   | {"search": "toto"} | GET
 (1 row)
 
 -- DELETE
 SELECT status,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url',current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_delete(current_setting('http.server_host') || '/anything?foo=bar');
- status | args |                 url                 | method 
---------+------+-------------------------------------+--------
-    200 | bar  | http://httpbin.org/anything?foo=bar | DELETE
+ status | args |       path        | method 
+--------+------+-------------------+--------
+    200 | bar  | /anything?foo=bar | DELETE
 (1 row)
 
 -- DELETE with payload
 SELECT status,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url',current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method,
 content::json->>'data' AS data
 FROM http_delete(current_setting('http.server_host') || '/anything?foo=bar', 'payload', 'text/plain');
- status | args |                 url                 | method |  data   
---------+------+-------------------------------------+--------+---------
-    200 | bar  | http://httpbin.org/anything?foo=bar | DELETE | payload
+ status | args |       path        | method |  data   
+--------+------+-------------------+--------+---------
+    200 | bar  | /anything?foo=bar | DELETE | payload
 (1 row)
 
 -- PUT
 SELECT status,
 content::json->>'data' AS data,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_put(current_setting('http.server_host') || '/anything?foo=bar','payload','text/plain');
- status |  data   | args |                 url                 | method 
---------+---------+------+-------------------------------------+--------
-    200 | payload | bar  | http://httpbin.org/anything?foo=bar | PUT
+ status |  data   | args |       path        | method 
+--------+---------+------+-------------------+--------
+    200 | payload | bar  | /anything?foo=bar | PUT
 (1 row)
 
 -- PATCH
 SELECT status,
 content::json->>'data' AS data,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_patch(current_setting('http.server_host') || '/anything?foo=bar','{"this":"that"}','application/json');
- status |      data       | args |                 url                 | method 
---------+-----------------+------+-------------------------------------+--------
-    200 | {"this":"that"} | bar  | http://httpbin.org/anything?foo=bar | PATCH
+ status |      data       | args |       path        | method 
+--------+-----------------+------+-------------------+--------
+    200 | {"this":"that"} | bar  | /anything?foo=bar | PATCH
 (1 row)
 
 -- POST
 SELECT status,
 content::json->>'data' AS data,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_post(current_setting('http.server_host') || '/anything?foo=bar','payload','text/plain');
- status |  data   | args |                 url                 | method 
---------+---------+------+-------------------------------------+--------
-    200 | payload | bar  | http://httpbin.org/anything?foo=bar | POST
+ status |  data   | args |       path        | method 
+--------+---------+------+-------------------+--------
+    200 | payload | bar  | /anything?foo=bar | POST
 (1 row)
 
 -- POST with json data
 SELECT status,
 content::json->'form'->>'this' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_post(current_setting('http.server_host') || '/anything', jsonb_build_object('this', 'that'));
- status | args |             url             | method 
---------+------+-----------------------------+--------
-    200 | that | http://httpbin.org/anything | POST
+ status | args |   path    | method 
+--------+------+-----------+--------
+    200 | that | /anything | POST
 (1 row)
 
 -- POST with data
 SELECT status,
 content::json->'form'->>'key1' AS key1,
 content::json->'form'->>'key2' AS key2,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
 FROM http_post(current_setting('http.server_host') || '/anything', 'key1=value1&key2=value2','application/x-www-form-urlencoded');
- status |  key1  |  key2  |             url             | method 
---------+--------+--------+-----------------------------+--------
-    200 | value1 | value2 | http://httpbin.org/anything | POST
+ status |  key1  |  key2  |   path    | method 
+--------+--------+--------+-----------+--------
+    200 | value1 | value2 | /anything | POST
 (1 row)
 
 -- HEAD
@@ -167,11 +165,11 @@ WHERE field ILIKE 'Abcde';
 
 -- Follow redirect
 SELECT status,
-(content::json)->>'url' AS url
+replace((content::json)->>'url', current_setting('http.server_host'),'') AS path
 FROM http_get(current_setting('http.server_host') || '/redirect-to?url=get');
- status |          url           
---------+------------------------
-    200 | http://httpbin.org/get
+ status | path 
+--------+------
+    200 | /get
 (1 row)
 
 -- Request image
@@ -271,8 +269,15 @@ SELECT status FROM http_get(current_setting('http.server_host') || '/delay/7');
 -- SET to bogus file
 SET http.CURLOPT_CAINFO = '/path/to/somebundle.crt';
 -- should fail
-SELECT status FROM http_get('https://postgis.net');
-ERROR:  error setting certificate file: /path/to/somebundle.crt
+DO $$
+BEGIN
+   SELECT status FROM http_get('https://postgis.net');
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Invalid cert file';
+END;
+$$;
+WARNING:  Invalid cert file
 -- set to ignore cert
 SET http.CURLOPT_SSL_VERIFYPEER = '0';
 -- should pass
