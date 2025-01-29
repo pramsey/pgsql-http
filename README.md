@@ -348,29 +348,34 @@ Replace 17 with your version of PostgreSQL
 apt install postgresql-17-http
 ```
 
-### UNIX: Compile from Source
+### Compile from Source
 
-If you have PostgreSQL (>= 9.3) devel packages and CURL devel packages installed (>= 0.7.20), you should have `pg_config` and `curl-config` on your path, so you should be able to just run `make` (or `gmake`), then `make install`, then in your database `CREATE EXTENSION http`.
+#### General Unix
+
+If you have PostgreSQL devel packages and CURL devel packages installed, you should have `pg_config` and `curl-config` on your path, so you should be able to just run `make` (or `gmake`), then `make install`, then in your database `CREATE EXTENSION http`.
 
 If you already installed a previous version and you just want to upgrade, then `ALTER EXTENSION http UPDATE`.
 
-#### Compiling for Apt based systems, using apt postgresql packages
+#### Debian / Ubuntu / APT
 
-Refer to https://wiki.postgresql.org/wiki/Apt for pulling packages from apt.postgresql.org repo
-```
-# replace the postgresql-server-dev-14 with your current version
-sudo apt install postgresql-server-dev-14 libcurl4-openssl-dev make g++
+Refer to https://wiki.postgresql.org/wiki/Apt for pulling packages from apt.postgresql.org repository.
+
+```bash
+sudo apt install \
+  postgresql-server-dev-14 \
+  libcurl4-openssl-dev \
+  make \
+  g++
+
 make
 sudo make install
 ```
 
-If there several PostgreSQL installations available, you might need to edit the Makefile before running `make` to something like this:
+If there several PostgreSQL installations available, you might need to edit the Makefile before running `make`:
 
 ```
-...
 #PG_CONFIG = pg_config
 PG_CONFIG = /usr/lib/postgresql/14/bin/pg_config
-...
 ```
 
 ### Windows
