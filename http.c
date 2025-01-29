@@ -4,7 +4,7 @@
  * Purpose:  Main file.
  *
  ***********************************************************************
- * Copyright 2015 Paul Ramsey <pramsey@cleverelephant.ca>
+ * Copyright 2025 Paul Ramsey <pramsey@cleverelephant.ca>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
