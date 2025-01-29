@@ -1,4 +1,5 @@
 CREATE EXTENSION http;
+SET http.server_host = 'http://localhost:9080';
 set http.timeout_msec = 10000;
 SELECT http_set_curlopt('CURLOPT_TIMEOUT', '10');
  http_set_curlopt 
@@ -6,9 +7,19 @@ SELECT http_set_curlopt('CURLOPT_TIMEOUT', '10');
  t
 (1 row)
 
+-- if local server not up use global one
+DO language plpgsql $$
+BEGIN
+  BEGIN
+    PERFORM http_get(current_setting('http.server_host') || '/status/202');
+  EXCEPTION WHEN OTHERS THEN
+    SET http.server_host = 'http://httpbin.org';
+  END;
+END;
+$$;
 -- Status code
 SELECT status
-FROM http_get('http://localhost:9080/status/202');
+FROM http_get(current_setting('http.server_host') || '/status/202');
  status 
 --------
     202
@@ -18,7 +29,7 @@ FROM http_get('http://localhost:9080/status/202');
 SELECT lower(field) AS field, value
 FROM (
 	SELECT (unnest(headers)).*
-	FROM http_get('http://localhost:9080/response-headers?Abcde=abcde')
+	FROM http_get(current_setting('http.server_host') || '/response-headers?Abcde=abcde')
 ) a
 WHERE field ILIKE 'Abcde';
  field | value 
@@ -29,124 +40,122 @@ WHERE field ILIKE 'Abcde';
 -- GET
 SELECT status,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
 content::json->>'method' AS method
-FROM http_get('http://localhost:9080/anything?foo=bar');
- status | args |                  url                   | method 
---------+------+----------------------------------------+--------
-    200 | bar  | http://localhost:9080/anything?foo=bar | GET
+FROM http_get(current_setting('http.server_host') || '/anything?foo=bar');
+ status | args | method
+--------+------+--------
+    200 | bar  | GET
 (1 row)
 
 -- GET with data
 SELECT status,
 content::json->'args'->>'this' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url',current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
-FROM http_get('http://localhost:9080/anything', jsonb_build_object('this', 'that'));
- status | args |                   url                    | method 
---------+------+------------------------------------------+--------
-    200 | that | http://localhost:9080/anything?this=that | GET
+FROM http_get(current_setting('http.server_host') || '/anything', jsonb_build_object('this', 'that'));
+ status | args |        path         | method
+--------+------+---------------------+--------
+    200 | that | /anything?this=that | GET
 (1 row)
 
 -- GET with data
 SELECT status,
 content::json->>'args' as args,
 (content::json)->>'data' as data,
-content::json->>'url' as url,
 content::json->>'method' as method
-FROM http(('GET', 'http://localhost:9080/anything', NULL, 'application/json', '{"search": "toto"}'));
- status | args |        data        |              url               | method 
---------+------+--------------------+--------------------------------+--------
-    200 | {}   | {"search": "toto"} | http://localhost:9080/anything | GET
+FROM http(('GET', current_setting('http.server_host') || '/anything', NULL, 'application/json', '{"search": "toto"}'));
+ status | args |        data        | method
+--------+------+--------------------+--------
+    200 | {}   | {"search": "toto"} | GET
 (1 row)
 
 -- DELETE
 SELECT status,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url',current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
-FROM http_delete('http://localhost:9080/anything?foo=bar');
- status | args |                  url                   | method 
---------+------+----------------------------------------+--------
-    200 | bar  | http://localhost:9080/anything?foo=bar | DELETE
+FROM http_delete(current_setting('http.server_host') || '/anything?foo=bar');
+ status | args |       path        | method
+--------+------+-------------------+--------
+    200 | bar  | /anything?foo=bar | DELETE
 (1 row)
 
 -- DELETE with payload
 SELECT status,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url',current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method,
 content::json->>'data' AS data
-FROM http_delete('http://localhost:9080/anything?foo=bar', 'payload', 'text/plain');
- status | args |                  url                   | method |  data   
---------+------+----------------------------------------+--------+---------
-    200 | bar  | http://localhost:9080/anything?foo=bar | DELETE | payload
+FROM http_delete(current_setting('http.server_host') || '/anything?foo=bar', 'payload', 'text/plain');
+ status | args |       path        | method |  data
+--------+------+-------------------+--------+---------
+    200 | bar  | /anything?foo=bar | DELETE | payload
 (1 row)
 
 -- PUT
 SELECT status,
 content::json->>'data' AS data,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
-FROM http_put('http://localhost:9080/anything?foo=bar','payload','text/plain');
- status |  data   | args |                  url                   | method 
---------+---------+------+----------------------------------------+--------
-    200 | payload | bar  | http://localhost:9080/anything?foo=bar | PUT
+FROM http_put(current_setting('http.server_host') || '/anything?foo=bar','payload','text/plain');
+ status |  data   | args |       path        | method
+--------+---------+------+-------------------+--------
+    200 | payload | bar  | /anything?foo=bar | PUT
 (1 row)
 
 -- PATCH
 SELECT status,
 content::json->>'data' AS data,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
-FROM http_patch('http://localhost:9080/anything?foo=bar','{"this":"that"}','application/json');
- status |      data       | args |                  url                   | method 
---------+-----------------+------+----------------------------------------+--------
-    200 | {"this":"that"} | bar  | http://localhost:9080/anything?foo=bar | PATCH
+FROM http_patch(current_setting('http.server_host') || '/anything?foo=bar','{"this":"that"}','application/json');
+ status |      data       | args |       path        | method
+--------+-----------------+------+-------------------+--------
+    200 | {"this":"that"} | bar  | /anything?foo=bar | PATCH
 (1 row)
 
 -- POST
 SELECT status,
 content::json->>'data' AS data,
 content::json->'args'->>'foo' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
-FROM http_post('http://localhost:9080/anything?foo=bar','payload','text/plain');
- status |  data   | args |                  url                   | method 
---------+---------+------+----------------------------------------+--------
-    200 | payload | bar  | http://localhost:9080/anything?foo=bar | POST
+FROM http_post(current_setting('http.server_host') || '/anything?foo=bar','payload','text/plain');
+ status |  data   | args |       path        | method
+--------+---------+------+-------------------+--------
+    200 | payload | bar  | /anything?foo=bar | POST
 (1 row)
 
 -- POST with json data
 SELECT status,
 content::json->'form'->>'this' AS args,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
-FROM http_post('http://localhost:9080/anything', jsonb_build_object('this', 'that'));
- status | args |              url               | method 
---------+------+--------------------------------+--------
-    200 | that | http://localhost:9080/anything | POST
+FROM http_post(current_setting('http.server_host') || '/anything', jsonb_build_object('this', 'that'));
+ status | args |   path    | method
+--------+------+-----------+--------
+    200 | that | /anything | POST
 (1 row)
 
 -- POST with data
 SELECT status,
 content::json->'form'->>'key1' AS key1,
 content::json->'form'->>'key2' AS key2,
-content::json->>'url' AS url,
+replace(content::json->>'url', current_setting('http.server_host'),'') AS path,
 content::json->>'method' AS method
-FROM http_post('http://localhost:9080/anything', 'key1=value1&key2=value2','application/x-www-form-urlencoded');
- status |  key1  |  key2  |              url               | method 
---------+--------+--------+--------------------------------+--------
-    200 | value1 | value2 | http://localhost:9080/anything | POST
+FROM http_post(current_setting('http.server_host') || '/anything', 'key1=value1&key2=value2','application/x-www-form-urlencoded');
+ status |  key1  |  key2  |   path    | method
+--------+--------+--------+-----------+--------
+    200 | value1 | value2 | /anything | POST
 (1 row)
 
 -- HEAD
 SELECT lower(field) AS field, value
 FROM (
 	SELECT (unnest(headers)).*
-	FROM http_head('http://localhost:9080/response-headers?Abcde=abcde')
+	FROM http_head(current_setting('http.server_host') || '/response-headers?Abcde=abcde')
 ) a
 WHERE field ILIKE 'Abcde';
  field | value 
@@ -156,17 +165,17 @@ WHERE field ILIKE 'Abcde';
 
 -- Follow redirect
 SELECT status,
-(content::json)->>'url' AS url
-FROM http_get('http://localhost:9080/redirect-to?url=get');
- status |            url            
---------+---------------------------
-    200 | http://localhost:9080/get
+replace((content::json)->>'url', current_setting('http.server_host'),'') AS path
+FROM http_get(current_setting('http.server_host') || '/redirect-to?url=get');
+ status | path
+--------+------
+    200 | /get
 (1 row)
 
 -- Request image
 WITH
   http AS (
-    SELECT * FROM http_get('http://localhost:9080/image/png')
+    SELECT * FROM http_get(current_setting('http.server_host') || '/image/png')
   ),
   headers AS (
     SELECT (unnest(headers)).* FROM http
@@ -191,7 +200,7 @@ SELECT http_set_curlopt('CURLOPT_PROXY', '127.0.0.1');
 -- Error because proxy is not there
 DO $$
 BEGIN
-    SELECT status FROM http_get('http://localhost:9080/status/555');
+    SELECT status FROM http_get(current_setting('http.server_host') || '/status/555');
 EXCEPTION
     WHEN OTHERS THEN
         RAISE WARNING 'Failed to connect';
@@ -201,7 +210,7 @@ WARNING:  Failed to connect
 -- Still an error
 DO $$
 BEGIN
-    SELECT status FROM http_get('http://localhost:9080/status/555');
+    SELECT status FROM http_get(current_setting('http.server_host') || '/status/555');
 EXCEPTION
     WHEN OTHERS THEN
         RAISE WARNING 'Failed to connect';
@@ -216,7 +225,7 @@ SELECT http_reset_curlopt();
 (1 row)
 
 -- Now it should work
-SELECT status FROM http_get('http://localhost:9080/status/555');
+SELECT status FROM http_get(current_setting('http.server_host') || '/status/555');
  status 
 --------
     555
@@ -230,6 +239,62 @@ SELECT http_set_curlopt('CURLOPT_TIMEOUT_MS', '10000');
  t
 (1 row)
 
+SELECT status FROM http_get(current_setting('http.server_host') || '/delay/7');
+ status
+--------
+    200
+(1 row)
+
+-- Test new GUC feature
+SET http.CURLOPT_TIMEOUT_MS = '10';
+-- should fail
+-- Still an error
+DO $$
+BEGIN
+    SELECT status FROM http_get(current_setting('http.server_host') || '/delay/7');
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Failed to connect';
+END;
+$$;
+WARNING:  Failed to connect
+SET http.CURLOPT_TIMEOUT_MS = '10000';
+--should pass
+SELECT status FROM http_get(current_setting('http.server_host') || '/delay/7');
+ status
+--------
+    200
+(1 row)
+
+-- SET to bogus file
+SET http.CURLOPT_CAINFO = '/path/to/somebundle.crt';
+-- should fail
+DO $$
+BEGIN
+   SELECT status FROM http_get('https://postgis.net');
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Invalid cert file';
+END;
+$$;
+WARNING:  Invalid cert file
+-- set to ignore cert
+SET http.CURLOPT_SSL_VERIFYPEER = '0';
+-- should pass
+SELECT status FROM http_get('https://postgis.net');
+ status
+--------
+    200
+(1 row)
+
+SHOW http.CURLOPT_CAINFO;
+   http.curlopt_cainfo
+-------------------------
+ /path/to/somebundle.crt
+(1 row)
+
+-- reset it
+RESET http.CURLOPT_CAINFO;
 SELECT status FROM http_get('http://localhost:9080/delay/7');
  status 
 --------
@@ -242,10 +307,10 @@ CREATE TEMPORARY TABLE timer AS
   SELECT now() AS start;
 SELECT *
   FROM http_get('http://localhost:9080/delay/7');
-ERROR:  canceling statement due to user request
+ERROR:  HTTP request cancelled
 SELECT round(extract(epoch FROM now() - start) * 10) AS m
   FROM timer;
- m 
+ m
 ---
  2
 (1 row)

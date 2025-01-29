@@ -66,7 +66,7 @@ SELECT content::json->'headers'->>'Authorization'
 (1 row)
 ```
 
-Read the `status` and `content` fields out of a `http_response` object.
+Read the `status` and `content_type` fields out of a `http_response` object.
 
 ```sql
 SELECT status, content_type
@@ -248,7 +248,7 @@ As seen in the examples, you can unspool the array of `http_header` tuples into 
 
 ## CURL Options
 
-Select [CURL options](https://curl.se/libcurl/c/curl_easy_setopt.html) are available to set using the `http_set_curlopt(curlopt VARCHAR, value varchar)` function.
+Select [CURL options](https://curl.se/libcurl/c/curl_easy_setopt.html) are available to set using the SQL `SET` command and the appropriate option name.
 
 * [CURLOPT_DNS_SERVERS](https://curl.se/libcurl/c/CURLOPT_DNS_SERVERS.html)
 * [CURLOPT_PROXY](https://curl.se/libcurl/c/CURLOPT_PROXY.html)
@@ -279,53 +279,66 @@ Select [CURL options](https://curl.se/libcurl/c/curl_easy_setopt.html) are avail
 * [CURLOPT_CONNECTTIMEOUT_MS](https://curl.se/libcurl/c/CURLOPT_CONNECTTIMEOUT_MS.html)
 * [CURLOPT_USERAGENT](https://curl.se/libcurl/c/CURLOPT_USERAGENT.html)
 
-
 For example,
 
 ```sql
--- Set the PROXYPORT option
-SELECT http_set_curlopt('CURLOPT_PROXYPORT', '12345');
+-- Set the curlopt_proxyport option
+SET http.curlopt_proxyport = '12345';
 
--- List all currently set options
+-- View the curlopt_proxyport option
+SHOW http.curlopt_proxyport;
+
+-- View *all* currently set options
 SELECT * FROM http_list_curlopt();
 ```
 
 Will set the proxy port option for the lifetime of the database connection. You can reset all CURL options to their defaults using the `http_reset_curlopt()` function.
 
-Using this extension as a background automated process without supervision (e.g as a trigger) may have unintended consequences for other servers.
-It is considered a best practice to share contact information with your requests,
-so that administrators can reach you in case your HTTP calls get out of control.
+You can permanently set the CURL options for a database or role, using the `ALTER DATABASE` and `ALTER ROLE` commands.
 
-Certain API policies (e.g. [Wikimedia User-Agent policy](https://meta.wikimedia.org/wiki/User-Agent_policy)) may even require sharing specific contact information
-with each request. Others may disallow (via `robots.txt`) certain agents they don't recognize.
+```sql
+-- Applies to all roles in the database
+ALTER DATABASE mydb SET http.curlopt_tlsauth_password = 'secret';
+
+-- Applies to just one role in the database
+ALTER ROLE myapp IN mydb SET http.curlopt_tlsauth_password = 'secret';
+```
+
+## User Agents
+
+Using this extension as a background automated process without supervision (e.g as a trigger) may have unintended consequences for other servers. It is considered a best practice to share contact information with your requests, so that administrators can reach you in case your HTTP calls get out of control.
+
+Certain API policies (e.g. [Wikimedia User-Agent policy](https://meta.wikimedia.org/wiki/User-Agent_policy)) may even require sharing specific contact information with each request. Others may disallow (via `robots.txt`) certain agents they don't recognize.
 
 For such cases you can set the `CURLOPT_USERAGENT` option
 
 ```sql
-SELECT http_set_curlopt('CURLOPT_USERAGENT',
-                        'Examplebot/2.1 (+http://www.example.com/bot.html) Contact abuse@example.com');
+SET http.curlopt_useragent = 'PgBot/2.1 (+http://pgbot.com/bot.html) Contact abuse@pgbot.com';
 
-SELECT status, content::json ->> 'user-agent' FROM http_get('http://httpbun.com/user-agent');
+SELECT status, content::json->'headers'->>'User-Agent'
+  FROM http_get('http://httpbun.com/headers');
 ```
 ```
  status |                         user_agent
 --------+-----------------------------------------------------------
-    200 | Examplebot/2.1 (+http://www.example.com/bot.html) Contact abuse@example.com
+    200 | PgBot/2.1 (+http://pgbot.com/bot.html) Contact abuse@pgbot.com
 ```
 
 ## Keep-Alive & Timeouts
-
-*The `http_reset_curlopt()` approach described above is recommended. The global variables below will be deprecated and removed over time.*
 
 By default each request uses a fresh connection and assures that the connection is closed when the request is done.  This behavior reduces the chance of consuming system resources (sockets) as the extension runs over extended periods of time.
 
 High-performance applications may wish to enable keep-alive and connection persistence to reduce latency and enhance throughput.  The following GUC variable changes the behavior of the http extension to maintain connections as long as possible:
 
-    http.keepalive = 'on'
+```sql
+SET http.curlopt_tcp_keepalive = 1;
+```
 
 By default a 5 second timeout is set for the completion of a request.  If a different timeout is desired the following GUC variable can be used to set it in milliseconds:
 
-    http.timeout_msec = 200
+```sql
+SET http.curlopt_timeout_msec = 200;
+```
 
 ## Installation
 
@@ -364,15 +377,22 @@ PG_CONFIG = /usr/lib/postgresql/14/bin/pg_config
 
 There is a build available at [postgresonline](http://www.postgresonline.com/journal/archives/371-http-extension.html), not maintained by me.
 
+### Testing
+
+The integration tests are run with `make install && make installcheck` and expect to find a running instance of [httpbin](http://httpbin.org) at port 9080. The easiest way to get that is:
+
+```
+docker run -p 9080:80 kennethreitz/httpbin
+```
+
 ## Why This is a Bad Idea
 
-- "What happens if the web page takes a long time to return?" Your SQL call will just wait there until it does. Make sure your web service fails fast. Or (dangerous in a different way) run your query within [pg_background](https://github.com/vibhorkum/pg_background).
+- "What happens if the web page takes a long time to return?" Your SQL call will just wait there until it does. Make sure your web service fails fast. Or (dangerous in a different way) run your query within [pg_background](https://github.com/vibhorkum/pg_background) or on a schedule with [pg_cron](https://github.com/citusdata/pg_cron).
 - "What if the web page returns junk?" Your SQL call will have to test for junk before doing anything with the payload.
 - "What if the web page never returns?" Set a short timeout, or send a cancel to the request, or just wait forever.
 - "What if a user queries a page they shouldn't?" Restrict function access, or just don't install a footgun like this extension where users can access it.
 
 ## To Do
 
-- The new http://www.postgresql.org/docs/9.3/static/bgworker.html background worker support could be used to set up an HTTP request queue, so that pgsql-http can register a request and callback and then return immediately.
-- Inevitably some web server will return gzip content (Content-Encoding) without being asked for it. Handling that gracefully would be good.
+- The [background worker](https://www.postgresql.org/docs/current/bgworker.html) support could be used to set up an HTTP request queue, so that pgsql-http can register a request and callback and then return immediately.
 

@@ -3,6 +3,7 @@
 *.a
 *.pc
 *.dylib
+*.dll
 regression.diffs
 regression.out
 results/
