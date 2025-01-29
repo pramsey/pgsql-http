@@ -154,7 +154,6 @@ SELECT status FROM http_get(current_setting('http.server_host') || '/status/555'
 -- Alter the default timeout and then run a query that is longer than
 -- the default (5s), but shorter than the new timeout
 SELECT http_set_curlopt('CURLOPT_TIMEOUT_MS', '10000');
-<<<<<<< HEAD
 SELECT status FROM http_get(current_setting('http.server_host') || '/delay/7');
 
 -- Test new GUC feature
@@ -197,8 +196,6 @@ SHOW http.CURLOPT_CAINFO;
 
 -- reset it
 RESET http.CURLOPT_CAINFO;
-
-SHOW http.CURLOPT_CAINFO;
 
 SELECT status FROM http_get('http://localhost:9080/delay/7');
 
