@@ -228,6 +228,10 @@ int http_interrupt_requested = 0;
 static int
 http_progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
 {
+#ifdef WIN32
+	if (UNBLOCKED_SIGNAL_QUEUE())
+		pgwin32_dispatch_queued_signals();
+#endif
 	/* Check the PgSQL global flags */
 	return QueryCancelPending || ProcDiePending;
 }
