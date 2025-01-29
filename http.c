@@ -43,6 +43,7 @@
 #include <postgres.h>
 #include <fmgr.h>
 #include <funcapi.h>
+#include <miscadmin.h>
 #include <access/genam.h>
 #include <access/htup.h>
 #include <access/sysattr.h>
