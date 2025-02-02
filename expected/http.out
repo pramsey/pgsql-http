@@ -307,7 +307,7 @@ CREATE TEMPORARY TABLE timer AS
   SELECT now() AS start;
 SELECT *
   FROM http_get(current_setting('http.server_host') || '/delay/7');
-ERROR:  HTTP request cancelled
+ERROR:  canceling statement due to user request
 SELECT round(extract(epoch FROM now() - start) * 10) AS m
   FROM timer;
  m 

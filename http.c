@@ -1383,9 +1383,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		* report back.
 		*/
 		if (http_return == CURLE_ABORTED_BY_CALLBACK)
-		{
-			elog(ERROR, "HTTP request cancelled");
-		}
+			elog(ERROR, "canceling statement due to user request");
 #endif
 
 		http_error(http_return, http_error_buffer);
