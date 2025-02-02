@@ -19,6 +19,7 @@ jobs:
         - { PGVER: 15 }
         - { PGVER: 16 }
         - { PGVER: 17 }
+        - { PGVER: 18 }
 
     steps:
 
