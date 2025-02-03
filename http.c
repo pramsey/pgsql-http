@@ -211,8 +211,8 @@ static size_t http_readback(void *buffer, size_t size, size_t nitems, void *inst
 CURL * g_http_handle = NULL;
 
 /*
-* Interrupt support is dependent on CURLOPT_XFERINFOFUNCTION which is
-* only available from 7.32.0 and up
+* Interrupt support is dependent on CURLOPT_XFERINFOFUNCTION which
+* is only available from 7.39.0 and up
 */
 #if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 
