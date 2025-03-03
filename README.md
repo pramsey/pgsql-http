@@ -308,7 +308,7 @@ ALTER ROLE myapp IN mydb SET http.curlopt_tlsauth_password = 'secret';
 
 Using this extension as a background automated process without supervision (e.g as a trigger) may have unintended consequences for other servers. It is considered a best practice to share contact information with your requests, so that administrators can reach you in case your HTTP calls get out of control.
 
-Certain API policies (e.g. [Wikimedia User-Agent policy](https://meta.wikimedia.org/wiki/User-Agent_policy)) may even require sharing specific contact information with each request. Others may disallow (via `robots.txt`) certain agents they don't recognize.
+Certain API policies (e.g. [Wikimedia User-Agent policy](https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy)) may even require sharing specific contact information with each request. Others may disallow (via `robots.txt`) certain agents they don't recognize.
 
 For such cases you can set the `CURLOPT_USERAGENT` option
 
