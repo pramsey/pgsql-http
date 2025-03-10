@@ -42,6 +42,10 @@ jobs:
         export PGDATA=/var/lib/postgresql/${{ matrix.ci.PGVER }}/main
         export PGETC=/etc/postgresql/${{ matrix.ci.PGVER }}/main
         export PGBIN=/usr/lib/postgresql/${{ matrix.ci.PGVER }}/bin
+        # needed for pg18 and above cause cluster is no longer created on install
+        if [ ! -d "/etc/postgresql/${{ matrix.ci.PGVER }}/main" ]; then
+          sudo pg_createcluster ${{ matrix.ci.PGVER }} main
+        fi
         sudo cp ./ci/pg_hba.conf $PGETC/pg_hba.conf
         sudo su postgres -c "$PGBIN/pg_ctl --pgdata $PGDATA start -o '-c config_file=$PGETC/postgresql.conf -p 5432'"
 
