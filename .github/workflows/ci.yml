@@ -12,6 +12,7 @@ jobs:
 
     name: "CI"
     strategy:
+      fail-fast: true
       matrix:
         ci:
         - { PGVER: 13 }
@@ -24,14 +25,25 @@ jobs:
     steps:
 
     - name: 'Check Out'
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+
+    - name: 'Raise Priority for apt.postgresql.org'
+      run: |
+        cat << EOF >> ./pgdg.pref
+        Package: *
+        Pin: release o=apt.postgresql.org
+        Pin-Priority: 600
+        EOF
+        sudo mv ./pgdg.pref /etc/apt/preferences.d/
+        sudo apt update
 
     - name: 'Install PostgreSQL'
       run: |
+        sudo apt-get purge postgresql-*
         sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg-snapshot main ${{ matrix.ci.PGVER }}" > /etc/apt/sources.list.d/pgdg.list'
         curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
         sudo apt-get update
-        sudo apt-get -y install postgresql-${{ matrix.ci.PGVER }} postgresql-server-dev-${{ matrix.ci.PGVER }}
+        sudo apt-get -y install postgresql-${{ matrix.ci.PGVER }} postgresql-server-dev-${{ matrix.ci.PGVER }} postgresql-client-${{ matrix.ci.PGVER }}
 
     - name: 'Install Curl'
       run: |
@@ -39,11 +51,16 @@ jobs:
 
     - name: 'Start PostgreSQL'
       run: |
+        export PGVER=${{ matrix.ci.PGVER }}
         export PGDATA=/var/lib/postgresql/${{ matrix.ci.PGVER }}/main
         export PGETC=/etc/postgresql/${{ matrix.ci.PGVER }}/main
         export PGBIN=/usr/lib/postgresql/${{ matrix.ci.PGVER }}/bin
+        export PGRUNNER=`whoami`
+        sudo chmod -R 755 /home/${PGRUNNER}
         sudo cp ./ci/pg_hba.conf $PGETC/pg_hba.conf
-        sudo su postgres -c "$PGBIN/pg_ctl --pgdata $PGDATA start -o '-c config_file=$PGETC/postgresql.conf -p 5432'"
+        sudo systemctl stop postgresql
+        sudo pg_ctlcluster $PGVER main start
+        sudo pg_lsclusters
 
     - name: 'Start HttpBin Docker'
       run: |
