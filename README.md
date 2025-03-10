@@ -278,6 +278,7 @@ Select [CURL options](https://curl.se/libcurl/c/curl_easy_setopt.html) are avail
 * [CURLOPT_CONNECTTIMEOUT](https://curl.se/libcurl/c/CURLOPT_CONNECTTIMEOUT.html)
 * [CURLOPT_CONNECTTIMEOUT_MS](https://curl.se/libcurl/c/CURLOPT_CONNECTTIMEOUT_MS.html)
 * [CURLOPT_USERAGENT](https://curl.se/libcurl/c/CURLOPT_USERAGENT.html)
+* [CURLOPT_USERPWD](https://curl.se/libcurl/c/CURLOPT_USERPWD.html)
 
 For example,
 
