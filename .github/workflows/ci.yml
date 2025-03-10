@@ -55,7 +55,6 @@ jobs:
         export PGDATA=/var/lib/postgresql/$PGVER/main
         export PGETC=/etc/postgresql/$PGVER/main
         export PGBIN=/usr/lib/postgresql/$PGVER/bin
-        # export PGRUNNER=
         sudo chmod -R 755 /home/`whoami`
         sudo cp ./ci/pg_hba.conf $PGETC/pg_hba.conf
         sudo systemctl stop postgresql
