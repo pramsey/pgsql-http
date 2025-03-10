@@ -39,11 +39,10 @@ jobs:
 
     - name: 'Install PostgreSQL'
       run: |
-        sudo apt-get purge postgresql-*
         sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg-snapshot main ${{ matrix.ci.PGVER }}" > /etc/apt/sources.list.d/pgdg.list'
         curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
         sudo apt-get update
-        sudo apt-get -y install postgresql-${{ matrix.ci.PGVER }} postgresql-server-dev-${{ matrix.ci.PGVER }}
+        sudo apt-get -y install postgresql-${{ matrix.ci.PGVER }} postgresql-server-dev-${{ matrix.ci.PGVER }} postgresql-client-${{ matrix.ci.PGVER }}
 
     - name: 'Install Curl'
       run: |
@@ -55,7 +54,7 @@ jobs:
         export PGETC=/etc/postgresql/${{ matrix.ci.PGVER }}/main
         export PGBIN=/usr/lib/postgresql/${{ matrix.ci.PGVER }}/bin
         # needed for pg18 and above cause cluster is no longer created on install
-        # if [ ! -d "/etc/postgresql/${{ matrix.ci.PGVER }}/main" ]; then
+        # if [ ! -d "$PGETC" ]; then
         #   sudo pg_createcluster ${{ matrix.ci.PGVER }} main
         # fi
         sudo cp ./ci/pg_hba.conf $PGETC/pg_hba.conf
