@@ -12,6 +12,7 @@ jobs:
 
     name: "CI"
     strategy:
+      fail-fast: false
       matrix:
         ci:
         - { PGVER: 13 }
