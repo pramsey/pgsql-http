@@ -56,7 +56,6 @@ jobs:
         export PGETC=/etc/postgresql/${{ matrix.ci.PGVER }}/main
         export PGBIN=/usr/lib/postgresql/${{ matrix.ci.PGVER }}/bin
         export PGRUNNER=`whoami`
-        sudo chmod -R 755 /home/${PGRUNNER}
         sudo cp ./ci/pg_hba.conf $PGETC/pg_hba.conf
         sudo systemctl stop postgresql
         sudo pg_ctlcluster $PGVER main start
