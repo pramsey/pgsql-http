@@ -52,11 +52,10 @@ jobs:
     - name: 'Start PostgreSQL'
       run: |
         export PGVER=${{ matrix.ci.PGVER }}
-        export PGDATA=/var/lib/postgresql/${{ matrix.ci.PGVER }}/main
-        export PGETC=/etc/postgresql/${{ matrix.ci.PGVER }}/main
-        export PGBIN=/usr/lib/postgresql/${{ matrix.ci.PGVER }}/bin
-        export PGRUNNER=`whoami`
-        sudo chmod -R 755 /home/${PGRUNNER}
+        export PGDATA=/var/lib/postgresql/$PGVER/main
+        export PGETC=/etc/postgresql/$PGVER/main
+        export PGBIN=/usr/lib/postgresql/$PGVER/bin
+        sudo chmod -R 755 /home/`whoami`
         sudo cp ./ci/pg_hba.conf $PGETC/pg_hba.conf
         sudo systemctl stop postgresql
         sudo pg_ctlcluster $PGVER main start
