@@ -56,16 +56,11 @@ jobs:
         export PGETC=/etc/postgresql/${{ matrix.ci.PGVER }}/main
         export PGBIN=/usr/lib/postgresql/${{ matrix.ci.PGVER }}/bin
         export PGRUNNER=`whoami`
-        # needed for pg18 and above cause cluster is no longer created on install
-        # if [ ! -d "$PGETC" ]; then
-        #   sudo pg_createcluster ${{ matrix.ci.PGVER }} main
-        # fi
         sudo chmod -R 755 /home/${PGRUNNER}
         sudo cp ./ci/pg_hba.conf $PGETC/pg_hba.conf
         sudo systemctl stop postgresql
         sudo pg_ctlcluster $PGVER main start
         sudo pg_lsclusters
-        # sudo su postgres -c "$PGBIN/pg_ctl --pgdata $PGDATA start -o '-c config_file=$PGETC/postgresql.conf -p 5432'"
 
     - name: 'Start HttpBin Docker'
       run: |
