@@ -26,8 +26,19 @@ jobs:
     - name: 'Check Out'
       uses: actions/checkout@v3
 
+    - name: 'Raise Priority for apt.postgresql.org'
+      run: |
+        cat << EOF >> ./pgdg.pref
+        Package: *
+        Pin: release o=apt.postgresql.org
+        Pin-Priority: 600
+        EOF
+        sudo mv ./pgdg.pref /etc/apt/preferences.d/
+        sudo apt update
+
     - name: 'Install PostgreSQL'
       run: |
+        sudo apt-get purge postgresql-*
         sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg-snapshot main ${{ matrix.ci.PGVER }}" > /etc/apt/sources.list.d/pgdg.list'
         curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
         sudo apt-get update
