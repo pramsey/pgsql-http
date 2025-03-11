@@ -129,3 +129,25 @@ CREATE FUNCTION bytea_to_text(data BYTEA)
     AS 'MODULE_PATHNAME', 'bytea_to_text'
     LANGUAGE 'c'
     IMMUTABLE STRICT;
+
+CREATE FUNCTION http_headers(VARIADIC args text[])
+RETURNS http_header[] AS $$
+DECLARE
+    headers http_header[];
+    i int;
+BEGIN
+    -- Ensure the number of arguments is even
+    IF array_length(args, 1) % 2 <> 0 THEN
+        RAISE EXCEPTION 'Arguments must be provided in key-value pairs';
+    END IF;
+
+    -- Iterate over the arguments two at a time
+    FOR i IN 1..array_length(args, 1) BY 2 LOOP
+        headers := array_append(headers, http_header(args[i], args[i+1]));
+    END LOOP;
+
+    RETURN headers;
+END;
+$$
+LANGUAGE 'plpgsql'
+IMMUTABLE STRICT;

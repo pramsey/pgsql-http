@@ -54,7 +54,7 @@ SELECT content::json->'headers'->>'Authorization'
   FROM http((
           'GET',
            'http://httpbun.com/headers',
-           ARRAY[http_header('Authorization','Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9')],
+           http_headers('Authorization','Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9'),
            NULL,
            NULL
         )::http_request);
@@ -231,6 +231,7 @@ As seen in the examples, you can unspool the array of `http_header` tuples into 
 ## Functions
 
 * `http_header(field VARCHAR, value VARCHAR)` returns `http_header`
+* `http_headers(field VARCHAR, value VARCHAR, ...)` returns `http_header[]`
 * `http(request http_request)` returns `http_response`
 * `http_get(uri VARCHAR)` returns `http_response`
 * `http_get(uri VARCHAR, data JSONB)` returns `http_response`
