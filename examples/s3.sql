@@ -14,6 +14,18 @@
 -- Various pieces of the request are gathered into strings bundled together
 -- and ultimately signed with the s3 secret key.
 --
+-- Example:
+--
+-- https://cleverelephant-west-1.s3.amazonaws.com/META.json
+--
+-- SELECT * FROM s3_get(
+--     'your_s3_access_key',
+--     'your_s3_secret_key',
+--     'us-west-1',
+--     'cleverelephant-west-1',
+--     'META.json'
+-- );
+--
 CREATE OR REPLACE FUNCTION s3_get(
     access_key TEXT,
     secret_key TEXT,
@@ -120,13 +132,5 @@ $$ LANGUAGE 'plpgsql'
 VOLATILE;
 
 
--- https://cleverelephant-west-1.s3.amazonaws.com/META.json
 
-SELECT * FROM s3_get(
-    'your_s3_access_key',
-    'your_s3_secret_key',
-    'us-west-1',
-    'cleverelephant-west-1',
-    'META.json'
-);
 
