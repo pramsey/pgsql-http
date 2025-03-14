@@ -122,4 +122,11 @@ VOLATILE;
 
 -- https://cleverelephant-west-1.s3.amazonaws.com/META.json
 
+SELECT * FROM s3_get(
+    'your_s3_access_key',
+    'your_s3_secret_key',
+    'us-west-1',
+    'cleverelephant-west-1',
+    'META.json'
+);
 
