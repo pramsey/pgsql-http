@@ -2,6 +2,11 @@
 -- 
 -- s3_get
 --
+-- Installation:
+--
+--   CREATE EXTENSION crypto;
+--   CREATE EXTENSION http;
+--
 -- Utility function to take S3 object and access keys and create
 -- a signed HTTP GET request using the AWS4 signing scheme.
 -- https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html
