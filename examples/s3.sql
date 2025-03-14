@@ -4,7 +4,7 @@
 --
 -- Installation:
 --
---   CREATE EXTENSION crypto;
+--   CREATE EXTENSION pgcrypto;
 --   CREATE EXTENSION http;
 --
 -- Utility function to take S3 object and access keys and create
