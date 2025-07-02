@@ -910,6 +910,7 @@ set_curlopt(CURL* handle, const http_curlopt *opt)
 		err = curl_easy_setopt(handle, opt->curlopt, value_long);
 		elog(DEBUG2, "pgsql-http: set '%s' to value '%ld', return value = %d", opt->curlopt_guc, value_long, err);
 	}
+#if LIBCURL_VERSION_NUM >= 0x074700 /* 7.71.0 */
 	/* Only used for CURLOPT_SSLKEY_BLOB and CURLOPT_SSLCERT_BLOB */
 	else if (opt->curlopt_type == CURLOPT_BLOB)
 	{
@@ -924,6 +925,7 @@ set_curlopt(CURL* handle, const http_curlopt *opt)
 		err = curl_easy_setopt(handle, opt->curlopt, &blob);
 		elog(DEBUG2, "pgsql-http: set '%s' to value '%s', return value = %d", opt->curlopt_guc, opt->curlopt_val, err);
 	}
+#endif
 	else
 	{
 		/* Never get here */
