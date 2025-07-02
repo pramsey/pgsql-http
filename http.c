@@ -103,7 +103,7 @@ typedef enum {
 } http_method;
 
 /* Components (and postitions) of the http_request tuple type */
-enum {
+typedef enum {
 	REQ_METHOD = 0,
 	REQ_URI = 1,
 	REQ_HEADERS = 2,
@@ -112,7 +112,7 @@ enum {
 } http_request_type;
 
 /* Components (and postitions) of the http_response tuple type */
-enum {
+typedef enum {
 	RESP_STATUS = 0,
 	RESP_CONTENT_TYPE = 1,
 	RESP_HEADERS = 2,
@@ -120,7 +120,7 @@ enum {
 } http_response_type;
 
 /* Components (and postitions) of the http_header tuple type */
-enum {
+typedef enum {
 	HEADER_FIELD = 0,
 	HEADER_VALUE = 1
 } http_header_type;
@@ -208,7 +208,7 @@ static size_t http_writeback(void *contents, size_t size, size_t nmemb, void *us
 static size_t http_readback(void *buffer, size_t size, size_t nitems, void *instream);
 
 /* Global variables */
-CURL * g_http_handle = NULL;
+static CURL * g_http_handle = NULL;
 
 /*
 * Interrupt support is dependent on CURLOPT_XFERINFOFUNCTION which
