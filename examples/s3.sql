@@ -26,7 +26,7 @@
 -- );
 --
 --
--- Created and delete objects too!
+-- Create and delete objects too!
 --
 -- SELECT * FROM s3_request(
 --     'your_s3_access_key',      -- access
@@ -93,7 +93,6 @@ DECLARE
     signature TEXT;
     authorization_header TEXT;
     canonical_request_digest TEXT;
-    response http_response;
     request http_request;
 BEGIN
 
@@ -178,7 +177,6 @@ BEGIN
     RAISE DEBUG 's3_request, request %', request;
 
     RETURN http(request);
-    -- RETURN NULL;
 
 END;
 $$ LANGUAGE 'plpgsql'
