@@ -98,6 +98,7 @@ DECLARE
 BEGIN
 
     http_method := upper(http_method);
+    object_mimetype := lower(object_mimetype);
 
     IF object_payload IS NOT NULL
     THEN
@@ -113,7 +114,7 @@ BEGIN
     -- so content-type goes first
     IF object_payload IS NOT NULL
     THEN
-        canonical_headers := 'content-type:' || lower(object_mimetype) || E'\n' || canonical_headers;
+        canonical_headers := 'content-type:' || object_mimetype || E'\n' || canonical_headers;
         signed_headers :=  'content-type;' || signed_headers;
     END IF;
 
