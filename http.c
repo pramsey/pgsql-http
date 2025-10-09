@@ -46,6 +46,7 @@
 #include <miscadmin.h>
 #include <access/genam.h>
 #include <access/htup.h>
+#include <access/htup_details.h>
 #include <access/sysattr.h>
 #include <catalog/namespace.h>
 #include <catalog/pg_type.h>
@@ -66,9 +67,6 @@
 #include <utils/fmgroids.h>
 #include <utils/guc.h>
 
-#if PG_VERSION_NUM >= 90300
-#  include <access/htup_details.h>
-#endif
 
 #if PG_VERSION_NUM >= 100000
 #  include <utils/varlena.h>
@@ -243,7 +241,9 @@ http_progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl
 
 #endif /* 7.39.0 */
 
-#undef HTTP_MEM_CALLBACKS
+//#undef HTTP_MEM_CALLBACKS
+//xxxxxx
+#define HTTP_MEM_CALLBACKS
 #ifdef HTTP_MEM_CALLBACKS
 static void *
 http_calloc(size_t a, size_t b)
@@ -947,13 +947,35 @@ set_curlopt(CURL* handle, const http_curlopt *opt)
 	return true;
 }
 
+static void
+http_close_handle(CURL *handle)
+{
+	if (handle != g_http_handle)
+		elog(ERROR,
+			"%s called with invalid curl handle, g_http_handle(%p) != handle(%p)",
+			__func__, g_http_handle, handle);
+	curl_easy_cleanup(handle);
+	g_http_handle = NULL;
+}
+
+static void
+http_reset_handle(CURL *handle)
+{
+	MemoryContext oldcontext;
+	if (!handle) return;
+	oldcontext = MemoryContextSwitchTo(TopMemoryContext);
+	curl_easy_reset(handle);
+	MemoryContextSwitchTo(oldcontext);
+}
+
 /* Check/create the global CURL* handle */
 static CURL *
-http_get_handle()
+http_open_handle()
 {
 	CURL *handle = g_http_handle;
 	http_curlopt *opt = settable_curlopts;
 
+	MemoryContext oldcontext = MemoryContextSwitchTo(TopMemoryContext);
 	/* Initialize the global handle if needed */
 	if (!handle)
 	{
@@ -965,6 +987,7 @@ http_get_handle()
 	{
 		curl_easy_reset(handle);
 	}
+	MemoryContextSwitchTo(oldcontext);
 
 	/* Always want a default fast (1 second) connection timeout */
 	/* User can over-ride with http_set_curlopt() if they wish */
@@ -1000,8 +1023,8 @@ Datum http_reset_curlopt(PG_FUNCTION_ARGS)
 {
 	http_curlopt *opt = settable_curlopts;
 	/* Set up global HTTP handle */
-	CURL * handle = http_get_handle();
-	curl_easy_reset(handle);
+	CURL *handle = http_open_handle();
+	http_reset_handle(handle);
 
 	/* Clean out the settable_curlopts global cache */
 	while (opt->curlopt)
@@ -1089,7 +1112,7 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 		PG_RETURN_BOOL(false);
 
 	/* Set up global HTTP handle */
-	handle = http_get_handle();
+	handle = http_open_handle();
 
 	/* Read arguments */
 	curlopt_txt = PG_GETARG_TEXT_P(0);
@@ -1136,6 +1159,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	http_method method;
 
 	/* Processing */
+	CURL *handle;
 	CURLcode err;
 	char http_error_buffer[CURL_ERROR_SIZE] = "\0";
 
@@ -1204,58 +1228,58 @@ Datum http_request(PG_FUNCTION_ARGS)
 	elog(DEBUG2, "pgsql-http: method_str: '%s', method: %d", method_str, method);
 
 	/* Set up global HTTP handle */
-	g_http_handle = http_get_handle();
+	handle = http_open_handle();
 
 	/* Set up the error buffer */
-	CURL_SETOPT(g_http_handle, CURLOPT_ERRORBUFFER, http_error_buffer);
+	CURL_SETOPT(handle, CURLOPT_ERRORBUFFER, http_error_buffer);
 
 	/* Set the target URL */
-	CURL_SETOPT(g_http_handle, CURLOPT_URL, uri);
+	CURL_SETOPT(handle, CURLOPT_URL, uri);
 
 
 	/* Restrict to just http/https. Leaving unrestricted */
 	/* opens possibility of users requesting file:/// urls */
 	/* locally */
 #if LIBCURL_VERSION_NUM >= 0x075400  /* 7.84.0 */
-	CURL_SETOPT(g_http_handle, CURLOPT_PROTOCOLS_STR, "http,https");
+	CURL_SETOPT(handle, CURLOPT_PROTOCOLS_STR, "http,https");
 #else
-	CURL_SETOPT(g_http_handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+	CURL_SETOPT(handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
 #endif
 
 	if ( curlopt_is_set(CURLOPT_TCP_KEEPALIVE) )
 	{
 		/* Keep sockets held open */
-		CURL_SETOPT(g_http_handle, CURLOPT_FORBID_REUSE, 0);
+		CURL_SETOPT(handle, CURLOPT_FORBID_REUSE, 0);
 	}
 	else
 	{
 		/* Keep sockets from being held open */
-		CURL_SETOPT(g_http_handle, CURLOPT_FORBID_REUSE, 1);
+		CURL_SETOPT(handle, CURLOPT_FORBID_REUSE, 1);
 	}
 
 	/* Set up the write-back function */
-	CURL_SETOPT(g_http_handle, CURLOPT_WRITEFUNCTION, http_writeback);
+	CURL_SETOPT(handle, CURLOPT_WRITEFUNCTION, http_writeback);
 
 	/* Set up the write-back buffer */
 	initStringInfo(&si_data);
 	initStringInfo(&si_headers);
-	CURL_SETOPT(g_http_handle, CURLOPT_WRITEDATA, (void*)(&si_data));
-	CURL_SETOPT(g_http_handle, CURLOPT_WRITEHEADER, (void*)(&si_headers));
+	CURL_SETOPT(handle, CURLOPT_WRITEDATA, (void*)(&si_data));
+	CURL_SETOPT(handle, CURLOPT_WRITEHEADER, (void*)(&si_headers));
 
 #if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 	/* Connect the progress callback for interrupt support */
-	CURL_SETOPT(g_http_handle, CURLOPT_XFERINFOFUNCTION, http_progress_callback);
-	CURL_SETOPT(g_http_handle, CURLOPT_NOPROGRESS, 0);
+	CURL_SETOPT(handle, CURLOPT_XFERINFOFUNCTION, http_progress_callback);
+	CURL_SETOPT(handle, CURLOPT_NOPROGRESS, 0);
 #endif
 
 	/* Set the HTTP content encoding to all curl supports */
-	CURL_SETOPT(g_http_handle, CURLOPT_ACCEPT_ENCODING, "");
+	CURL_SETOPT(handle, CURLOPT_ACCEPT_ENCODING, "");
 
 	if ( method != HTTP_HEAD )
 	{
 		/* Follow redirects, as many as 5 */
-		CURL_SETOPT(g_http_handle, CURLOPT_FOLLOWLOCATION, 1);
-		CURL_SETOPT(g_http_handle, CURLOPT_MAXREDIRS, 5);
+		CURL_SETOPT(handle, CURLOPT_FOLLOWLOCATION, 1);
+		CURL_SETOPT(handle, CURLOPT_MAXREDIRS, 5);
 	}
 
 	if ( curlopt_is_set(CURLOPT_TCP_KEEPALIVE) )
@@ -1304,36 +1328,36 @@ Datum http_request(PG_FUNCTION_ARGS)
 		if ( method == HTTP_GET || method == HTTP_POST || method == HTTP_DELETE )
 		{
 			/* Add the content to the payload */
-			CURL_SETOPT(g_http_handle, CURLOPT_POST, 1);
+			CURL_SETOPT(handle, CURLOPT_POST, 1);
 			if ( method == HTTP_GET )
 			{
 				/* Force the verb to be GET */
-				CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, "GET");
+				CURL_SETOPT(handle, CURLOPT_CUSTOMREQUEST, "GET");
 			}
 			else if( method == HTTP_DELETE )
 			{
 				/* Force the verb to be DELETE */
-				CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, "DELETE");
+				CURL_SETOPT(handle, CURLOPT_CUSTOMREQUEST, "DELETE");
 			}
 
-			CURL_SETOPT(g_http_handle, CURLOPT_POSTFIELDS, (char *)(VARDATA(content_text)));
-			CURL_SETOPT(g_http_handle, CURLOPT_POSTFIELDSIZE, content_size);
+			CURL_SETOPT(handle, CURLOPT_POSTFIELDS, (char *)(VARDATA(content_text)));
+			CURL_SETOPT(handle, CURLOPT_POSTFIELDSIZE, content_size);
 		}
 		else if ( method == HTTP_PUT || method == HTTP_PATCH || method == HTTP_UNKNOWN )
 		{
 			if ( method == HTTP_PATCH )
-				CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, "PATCH");
+				CURL_SETOPT(handle, CURLOPT_CUSTOMREQUEST, "PATCH");
 
 			/* Assume the user knows what they are doing and pass unchanged */
 			if ( method == HTTP_UNKNOWN )
-				CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, method_str);
+				CURL_SETOPT(handle, CURLOPT_CUSTOMREQUEST, method_str);
 
 			initStringInfo(&si_read);
 			appendBinaryStringInfo(&si_read, VARDATA(content_text), content_size);
-			CURL_SETOPT(g_http_handle, CURLOPT_UPLOAD, 1);
-			CURL_SETOPT(g_http_handle, CURLOPT_READFUNCTION, http_readback);
-			CURL_SETOPT(g_http_handle, CURLOPT_READDATA, &si_read);
-			CURL_SETOPT(g_http_handle, CURLOPT_INFILESIZE, content_size);
+			CURL_SETOPT(handle, CURLOPT_UPLOAD, 1);
+			CURL_SETOPT(handle, CURLOPT_READFUNCTION, http_readback);
+			CURL_SETOPT(handle, CURLOPT_READDATA, &si_read);
+			CURL_SETOPT(handle, CURLOPT_INFILESIZE, content_size);
 		}
 		else
 		{
@@ -1343,11 +1367,11 @@ Datum http_request(PG_FUNCTION_ARGS)
 	}
 	else if ( method == HTTP_DELETE )
 	{
-		CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, "DELETE");
+		CURL_SETOPT(handle, CURLOPT_CUSTOMREQUEST, "DELETE");
 	}
 	else if ( method == HTTP_HEAD )
 	{
-		CURL_SETOPT(g_http_handle, CURLOPT_NOBODY, 1);
+		CURL_SETOPT(handle, CURLOPT_NOBODY, 1);
 	}
 	else if ( method == HTTP_PUT || method == HTTP_POST )
 	{
@@ -1356,17 +1380,17 @@ Datum http_request(PG_FUNCTION_ARGS)
 	}
 	else if ( method == HTTP_UNKNOWN ){
 		/* Assume the user knows what they are doing and pass unchanged */
-		CURL_SETOPT(g_http_handle, CURLOPT_CUSTOMREQUEST, method_str);
+		CURL_SETOPT(handle, CURLOPT_CUSTOMREQUEST, method_str);
 	}
 
 	pfree(method_str);
 	/* Set the headers */
-	CURL_SETOPT(g_http_handle, CURLOPT_HTTPHEADER, headers);
+	CURL_SETOPT(handle, CURLOPT_HTTPHEADER, headers);
 
 	/*************************************************************************
 	* PERFORM THE REQUEST!
 	**************************************************************************/
-	http_return = curl_easy_perform(g_http_handle);
+	http_return = curl_easy_perform(handle);
 	elog(DEBUG2, "pgsql-http: queried '%s'", uri);
 	elog(DEBUG2, "pgsql-http: http_return '%d'", http_return);
 
@@ -1383,8 +1407,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	if ( http_return != CURLE_OK )
 	{
 		curl_slist_free_all(headers);
-		curl_easy_cleanup(g_http_handle);
-		g_http_handle = NULL;
+		http_close_handle(handle);
 
 #if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 		/*
@@ -1399,12 +1422,11 @@ Datum http_request(PG_FUNCTION_ARGS)
 	}
 
 	/* Read the metadata from the handle directly */
-	if ( (CURLE_OK != curl_easy_getinfo(g_http_handle, CURLINFO_RESPONSE_CODE, &long_status)) ||
-		 (CURLE_OK != curl_easy_getinfo(g_http_handle, CURLINFO_CONTENT_TYPE, &content_type)) )
+	if ( (CURLE_OK != curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &long_status)) ||
+		 (CURLE_OK != curl_easy_getinfo(handle, CURLINFO_CONTENT_TYPE, &content_type)) )
 	{
 		curl_slist_free_all(headers);
-		curl_easy_cleanup(g_http_handle);
-		g_http_handle = NULL;
+		http_close_handle(handle);
 		ereport(ERROR, (errmsg("CURL: Error in curl_easy_getinfo")));
 	}
 
@@ -1507,8 +1529,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	ReleaseTupleDesc(tup_desc);
 	if ( ! curlopt_is_set(CURLOPT_TCP_KEEPALIVE) )
 	{
-		curl_easy_cleanup(g_http_handle);
-		g_http_handle = NULL;
+		http_close_handle(handle);
 	}
 	curl_slist_free_all(headers);
 	pfree(si_headers.data);
