@@ -66,6 +66,10 @@
 #include <utils/fmgroids.h>
 #include <utils/guc.h>
 
+#if PG_VERSION_NUM >= 170000
+#include <utils/wait_event.h>
+#endif
+
 #if PG_VERSION_NUM >= 90300
 #  include <access/htup_details.h>
 #endif
@@ -216,6 +220,10 @@ static size_t http_readback(void *buffer, size_t size, size_t nitems, void *inst
 
 /* Global variables */
 static CURL * g_http_handle = NULL;
+
+#if PG_VERSION_NUM >= 170000
+static uint32 wait_event_transfer = 0;
+#endif
 
 /*
 * Interrupt support is dependent on CURLOPT_XFERINFOFUNCTION which
@@ -420,6 +428,10 @@ void _PG_init(void)
 	 * to manipulate CURL options.
 	 */
 	http_guc_init();
+
+#if PG_VERSION_NUM >= 170000
+	wait_event_transfer = WaitEventExtensionNew("HttpTransfer");
+#endif
 
 #ifdef HTTP_MEM_CALLBACKS
 	/*
@@ -872,7 +884,7 @@ http_check_curl_version(const curl_version_info_data *version_info)
 
 	if ( version_info->version_num < CURL_MIN_VERSION )
 	{
-		elog(ERROR, "pgsql-http requires Curl version 0.7.20 or higher");
+		elog(ERROR, "pgsql-http requires Curl version 7.20.0 or higher");
 	}
 }
 
@@ -1363,10 +1375,20 @@ Datum http_request(PG_FUNCTION_ARGS)
 	/* Set the headers */
 	CURL_SETOPT(g_http_handle, CURLOPT_HTTPHEADER, headers);
 
+#if PG_VERSION_NUM >= 170000
+	/* Set up wait event tracking */
+	pgstat_report_wait_start(wait_event_transfer);
+#endif
+
 	/*************************************************************************
 	* PERFORM THE REQUEST!
 	**************************************************************************/
 	http_return = curl_easy_perform(g_http_handle);
+
+#if PG_VERSION_NUM >= 170000
+	pgstat_report_wait_end();
+#endif
+
 	elog(DEBUG2, "pgsql-http: queried '%s'", uri);
 	elog(DEBUG2, "pgsql-http: http_return '%d'", http_return);
 
