@@ -981,13 +981,13 @@ http_get_handle()
 	if (!handle)
 	{
 		handle = curl_easy_init();
+		if (!handle)
+			ereport(ERROR, (errmsg("Unable to initialize CURL")));
 	}
-	/* Always reset because we are going to fill in the user */
-	/* set options down below */
-	else
-	{
-		curl_easy_reset(handle);
-	}
+
+	/* Always reset so GUC-supplied options (e.g. tiny timeouts) are
+	 * reliably enforced on both new and reused handles. */
+	curl_easy_reset(handle);
 
 	/* Always want a default fast (1 second) connection timeout */
 	/* User can over-ride with http_set_curlopt() if they wish */
@@ -995,10 +995,7 @@ http_get_handle()
 	curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 5000);
 
 	/* Set the user agent. If not set, use PG_VERSION as default */
-   	curl_easy_setopt(handle, CURLOPT_USERAGENT, PG_VERSION_STR);
-
-	if (!handle)
-		ereport(ERROR, (errmsg("Unable to initialize CURL")));
+	curl_easy_setopt(handle, CURLOPT_USERAGENT, PG_VERSION_STR);
 
 	/* Bring in any options the user has set this session */
 	while (opt->curlopt)
