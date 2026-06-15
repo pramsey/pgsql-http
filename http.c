@@ -418,7 +418,7 @@ http_guc_init_opt(http_curlopt *opt)
 }
 
 static void
-http_guc_init()
+http_guc_init(void)
 {
 	http_curlopt *opt = settable_curlopts;
 	while (opt->curlopt)
@@ -972,7 +972,7 @@ set_curlopt(CURL* handle, const http_curlopt *opt)
 
 /* Check/create the global CURL* handle */
 static CURL *
-http_get_handle()
+http_get_handle(void)
 {
 	CURL *handle = g_http_handle;
 	http_curlopt *opt = settable_curlopts;
