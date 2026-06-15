@@ -15,7 +15,6 @@ jobs:
       fail-fast: true
       matrix:
         ci:
-        - { PGVER: 14 }
         - { PGVER: 15 }
         - { PGVER: 16 }
         - { PGVER: 17 }
@@ -25,7 +24,7 @@ jobs:
     steps:
 
     - name: 'Check Out'
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: 'Raise Priority for apt.postgresql.org'
       run: |
