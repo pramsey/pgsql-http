@@ -863,10 +863,10 @@ header_string_to_array(StringInfo si)
 
 		/* Copy the matched portions out of the string */
 		int len1 = Min(eo1-so1, RVSZ-1);
-		memcpy(rv1, si->data+si->cursor+so1, len1);
-		rv1[len1] = '\0';
 		int len2 = Min(eo2-so2, RVSZ-1);
+		memcpy(rv1, si->data+si->cursor+so1, len1);
 		memcpy(rv2, si->data+si->cursor+so2, len2);
+		rv1[len1] = '\0';
 		rv2[len2] = '\0';
 
 		/* Move forward for next match */
