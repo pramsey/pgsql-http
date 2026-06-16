@@ -993,8 +993,8 @@ http_get_handle(void)
 
 	/* Always want a default fast (1 second) connection timeout */
 	/* User can over-ride with http_set_curlopt() if they wish */
-	curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT_MS, 1000);
-	curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 5000);
+	curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT_MS, 1000L);
+	curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, 5000L);
 
 	/* Set the user agent. If not set, use PG_VERSION as default */
 	curl_easy_setopt(handle, CURLOPT_USERAGENT, PG_VERSION_STR);
@@ -1247,12 +1247,12 @@ Datum http_request(PG_FUNCTION_ARGS)
 	if ( curlopt_is_set(CURLOPT_TCP_KEEPALIVE) )
 	{
 		/* Keep sockets held open */
-		CURL_SETOPT(g_http_handle, CURLOPT_FORBID_REUSE, 0);
+		CURL_SETOPT(g_http_handle, CURLOPT_FORBID_REUSE, 0L);
 	}
 	else
 	{
 		/* Keep sockets from being held open */
-		CURL_SETOPT(g_http_handle, CURLOPT_FORBID_REUSE, 1);
+		CURL_SETOPT(g_http_handle, CURLOPT_FORBID_REUSE, 1L);
 	}
 
 	/* Set up the write-back function */
@@ -1267,7 +1267,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 #if LIBCURL_VERSION_NUM >= 0x072700 /* 7.39.0 */
 	/* Connect the progress callback for interrupt support */
 	CURL_SETOPT(g_http_handle, CURLOPT_XFERINFOFUNCTION, http_progress_callback);
-	CURL_SETOPT(g_http_handle, CURLOPT_NOPROGRESS, 0);
+	CURL_SETOPT(g_http_handle, CURLOPT_NOPROGRESS, 0L);
 #endif
 
 	/* Set the HTTP content encoding to all curl supports */
@@ -1276,8 +1276,8 @@ Datum http_request(PG_FUNCTION_ARGS)
 	if ( method != HTTP_HEAD )
 	{
 		/* Follow redirects, as many as 5 */
-		CURL_SETOPT(g_http_handle, CURLOPT_FOLLOWLOCATION, 1);
-		CURL_SETOPT(g_http_handle, CURLOPT_MAXREDIRS, 5);
+		CURL_SETOPT(g_http_handle, CURLOPT_FOLLOWLOCATION, 1L);
+		CURL_SETOPT(g_http_handle, CURLOPT_MAXREDIRS, 5L);
 	}
 
 	if ( curlopt_is_set(CURLOPT_TCP_KEEPALIVE) )
@@ -1326,7 +1326,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 		if ( method == HTTP_GET || method == HTTP_POST || method == HTTP_DELETE )
 		{
 			/* Add the content to the payload */
-			CURL_SETOPT(g_http_handle, CURLOPT_POST, 1);
+			CURL_SETOPT(g_http_handle, CURLOPT_POST, 1L);
 			if ( method == HTTP_GET )
 			{
 				/* Force the verb to be GET */
@@ -1352,7 +1352,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 
 			initStringInfo(&si_read);
 			appendBinaryStringInfo(&si_read, VARDATA(content_text), content_size);
-			CURL_SETOPT(g_http_handle, CURLOPT_UPLOAD, 1);
+			CURL_SETOPT(g_http_handle, CURLOPT_UPLOAD, 1L);
 			CURL_SETOPT(g_http_handle, CURLOPT_READFUNCTION, http_readback);
 			CURL_SETOPT(g_http_handle, CURLOPT_READDATA, &si_read);
 			CURL_SETOPT(g_http_handle, CURLOPT_INFILESIZE, content_size);
@@ -1369,7 +1369,7 @@ Datum http_request(PG_FUNCTION_ARGS)
 	}
 	else if ( method == HTTP_HEAD )
 	{
-		CURL_SETOPT(g_http_handle, CURLOPT_NOBODY, 1);
+		CURL_SETOPT(g_http_handle, CURLOPT_NOBODY, 1L);
 	}
 	else if ( method == HTTP_PUT || method == HTTP_POST )
 	{
