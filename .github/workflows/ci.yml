@@ -31,7 +31,10 @@ jobs:
       run: pg-start ${{ matrix.pg }}
 
     - name: 'Install libcurl'
-      run: apt-get -y install libcurl4-gnutls-dev
+      run: |
+        apt-get update
+        apt-get -y install libcurl4-gnutls-dev
+
 
     - name: 'Build & Install'
       run: |
