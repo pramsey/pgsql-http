@@ -28,7 +28,6 @@
  ***********************************************************************/
 
 /* Constants */
-#define HTTP_VERSION "1.7"
 #define HTTP_ENCODING "gzip"
 #define CURL_MIN_VERSION 0x071400 /* 7.20.0 */
 
@@ -91,6 +90,9 @@
 
 /* CURL */
 #include <curl/curl.h>
+
+#define HTTP_VERSION_STR(x) #x
+#define HTTP_VERSION HTTP_VERSION_STR(HTTP_VERSION_NUM)
 
 /* Set up PgSQL */
 #ifdef PG_MODULE_MAGIC_EXT
