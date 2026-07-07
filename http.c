@@ -91,9 +91,6 @@
 /* CURL */
 #include <curl/curl.h>
 
-#define HTTP_VERSION_STR(x) #x
-#define HTTP_VERSION HTTP_VERSION_STR(HTTP_VERSION_NUM)
-
 /* Set up PgSQL */
 #ifdef PG_MODULE_MAGIC_EXT
 PG_MODULE_MAGIC_EXT(
