@@ -30,6 +30,7 @@
 /* Constants */
 #define HTTP_ENCODING "gzip"
 #define CURL_MIN_VERSION 0x071400 /* 7.20.0 */
+#define HTTP_VERSION "1.7"
 
 /* System */
 #include <regex.h>

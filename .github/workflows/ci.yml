@@ -39,7 +39,7 @@ jobs:
     - name: 'Build & Install'
       run: |
         export PG_CFLAGS=-Werror
-        make with_llvm=no && make with_llvm=no install
+        make && make install
 
     - name: 'Test'
       run: PGUSER=postgres make installcheck || (cat regression.diffs && false)
