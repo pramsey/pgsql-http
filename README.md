@@ -402,6 +402,7 @@ The integration tests are run with `make install && make installcheck` and expec
 
 ```
 docker run -p 9080:80 kennethreitz/httpbin
+export PGOPTIONS="-c http.server_host=http://localhost:9080"
 ```
 
 ## Why This is a Bad Idea

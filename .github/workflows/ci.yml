@@ -42,4 +42,6 @@ jobs:
         make && make install
 
     - name: 'Test'
-      run: PGUSER=postgres make installcheck || (cat regression.diffs && false)
+      run: |
+        export PGOPTIONS="-c http.server_host=http://httpbin"
+        PGUSER=postgres make installcheck || (cat regression.diffs && false)

@@ -1,14 +1,15 @@
 CREATE EXTENSION http;
-SET http.server_host = 'http://localhost:9080';
-set http.timeout_msec = 10000;
+
+SET http.timeout_msec = 10000;
 SELECT http_set_curlopt('CURLOPT_TIMEOUT', '10');
--- if local server not up use global one
-DO language plpgsql $$
-BEGIN
+
+-- Check if http.server_host was passed externally; if not, default to http://httpbin.org
+DO LANGUAGE 'plpgsql' $$
   BEGIN
-    PERFORM http_get(current_setting('http.server_host') || '/status/202');
-  EXCEPTION WHEN OTHERS THEN
-    SET http.server_host = 'http://httpbin.org';
+    BEGIN
+      PERFORM http_get(current_setting('http.server_host') || '/status/202');
+    EXCEPTION WHEN OTHERS THEN
+      SET http.server_host = 'http://httpbin.org';
   END;
 END;
 $$;
