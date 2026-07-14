@@ -123,7 +123,7 @@ WITH
   )
 SELECT
   http.content_type,
-  length(text_to_bytea(http.content)) AS length_binary
+  length(text_to_bytea(http.content)) between 5000 and 9000 AS length_binary
 FROM http, headers
 WHERE field ilike 'Content-Type';
 
