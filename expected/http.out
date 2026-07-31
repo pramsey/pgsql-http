@@ -315,3 +315,30 @@ SELECT round(extract(epoch FROM now() - start) * 10) AS m
 (1 row)
 
 DROP TABLE timer;
+SELECT http_set_curlopt('CURLOPT_HTTPAUTH', 'CURLAUTH_NEGOTIATE');
+ http_set_curlopt 
+------------------
+ t
+(1 row)
+
+SHOW http.CURLOPT_HTTPAUTH;
+ http.curlopt_httpauth 
+-----------------------
+ CURLAUTH_NEGOTIATE
+(1 row)
+
+RESET http.CURLOPT_HTTPAUTH;
+SHOW http.CURLOPT_HTTPAUTH;
+ http.curlopt_httpauth 
+-----------------------
+ 
+(1 row)
+
+SELECT http_set_curlopt('CURLOPT_HTTPAUTH', 'DOES_NOT_EXIST');
+ERROR:  curl httpauth option 'DOES_NOT_EXIST' invalid
+SHOW http.CURLOPT_HTTPAUTH;
+ http.curlopt_httpauth 
+-----------------------
+ 
+(1 row)
+

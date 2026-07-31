@@ -143,8 +143,41 @@ typedef enum {
 typedef enum {
 	CURLOPT_STRING,
 	CURLOPT_LONG,
-	CURLOPT_BLOB
+	CURLOPT_BLOB,
+	CURLOPT_LONG_BITMASK
 } http_curlopt_type;
+
+/* CURLOPT_HTTPAUTH string/enum value mapping */
+typedef struct {
+	char *str;
+	unsigned long val;
+} http_curlopt_auth;
+
+/* CURLOPT_HTTPAUTH values we allow user to set at run-time */
+static http_curlopt_auth settable_curlopts_auth[] = {
+	{ "CURLAUTH_BASIC", CURLAUTH_BASIC },
+	{ "CURLAUTH_DIGEST", CURLAUTH_DIGEST },
+	{ "CURLAUTH_NEGOTIATE", CURLAUTH_NEGOTIATE },
+	{ "CURLAUTH_NTLM", CURLAUTH_NTLM },
+	{ "CURLAUTH_ANY", CURLAUTH_ANY },
+	{ "CURLAUTH_ANYSAFE", CURLAUTH_ANYSAFE },
+#if LIBCURL_VERSION_NUM >= 0x071303 /* 7.19.3 */
+	{ "CURLAUTH_DIGEST_IE", CURLAUTH_DIGEST_IE },
+#endif
+#if LIBCURL_VERSION_NUM >= 0x071503 /* 7.21.3 */
+	{ "CURLAUTH_ONLY", CURLAUTH_ONLY },
+#endif
+#if LIBCURL_VERSION_NUM >= 0x071600 /* 7.22.0 */
+	{ "CURLAUTH_NTLM_WB", CURLAUTH_NTLM_WB },
+#endif
+#if LIBCURL_VERSION_NUM >= 0x073D00 /* 7.61.0 */
+	{ "CURLAUTH_BEARER", CURLAUTH_BEARER },
+#endif
+#if LIBCURL_VERSION_NUM >= 0x074a00 /* 7.74.0 */
+	{ "CURLAUTH_AWS_SIGV4", CURLAUTH_AWS_SIGV4 },
+#endif
+	{ NULL, 0 },
+};
 
 /* CURLOPT string/enum value mapping */
 typedef struct {
@@ -155,7 +188,6 @@ typedef struct {
 	char *curlopt_val;
 	char *curlopt_guc;
 } http_curlopt;
-
 
 /* CURLOPT values we allow user to set at run-time */
 /* Be careful adding these, as they can be a security risk */
@@ -170,6 +202,9 @@ static http_curlopt settable_curlopts[] = {
 	{ CURLOPT_IPRESOLVE, CURLOPT_LONG, false, "CURLOPT_IPRESOLVE", NULL, NULL },
 #if LIBCURL_VERSION_NUM >= 0x070903 /* 7.9.3 */
 	{ CURLOPT_SSLCERTTYPE, CURLOPT_STRING, false, "CURLOPT_SSLCERTTYPE", NULL, NULL },
+#endif
+#if LIBCURL_VERSION_NUM >= 0x070a06 /* 7.10.6 */
+	{ CURLOPT_HTTPAUTH, CURLOPT_LONG_BITMASK, false, "CURLOPT_HTTPAUTH", NULL, NULL },
 #endif
 #if LIBCURL_VERSION_NUM >= 0x070e01 /* 7.14.1 */
 	{ CURLOPT_PROXY, CURLOPT_STRING, false, "CURLOPT_PROXY", NULL, NULL },
@@ -958,6 +993,39 @@ set_curlopt(CURL* handle, const http_curlopt *opt)
 		elog(DEBUG2, "pgsql-http: set '%s' to value '%s', return value = %d", opt->curlopt_guc, opt->curlopt_val, err);
 	}
 #endif
+#if LIBCURL_VERSION_NUM >= 0x070a06 /* 7.10.6 */
+	/* Only used for CURLOPT_HTTPAUTH */
+	else if (opt->curlopt_type == CURLOPT_LONG_BITMASK)
+	{
+		if (opt->curlopt == CURLOPT_HTTPAUTH)
+		{
+			http_curlopt_auth *opt_auth = settable_curlopts_auth;
+			bool curlopt_httpauth_found = false;
+			while (opt_auth->str)
+			{
+				if (strcasecmp(opt_auth->str, opt->curlopt_val) == 0)
+				{
+
+					err = curl_easy_setopt(handle, opt->curlopt, opt_auth->val);
+					curlopt_httpauth_found = true;
+					break;
+				}
+
+				opt_auth++;
+			}
+			if (!curlopt_httpauth_found)
+			{
+				elog(ERROR, "invalid curl httpauth option, '%s'", opt->curlopt_val);
+				return false;
+			}
+		}
+		else
+		{
+			/* Never get here */
+			elog(ERROR, "curl option '%d' is not available for run-time configuration", opt->curlopt);
+		}
+	}
+#endif
 	else
 	{
 		/* Never get here */
@@ -1123,6 +1191,27 @@ Datum http_set_curlopt(PG_FUNCTION_ARGS)
 	{
 		if (strcasecmp(opt->curlopt_str, curlopt) == 0)
 		{
+			if (opt->curlopt == CURLOPT_HTTPAUTH)
+			{
+				http_curlopt_auth *opt_auth = settable_curlopts_auth;
+				bool curlopt_httpauth_found = false;
+				while (opt_auth->str)
+				{
+					if (strcasecmp(opt_auth->str, value) == 0)
+					{
+						curlopt_httpauth_found = true;
+						break;
+					}
+					opt_auth++;
+				}
+				if (!curlopt_httpauth_found)
+				{
+					elog(ERROR, "curl httpauth option '%s' invalid", value);
+					PG_RETURN_BOOL(false);
+				}
+
+			}
+
 			if (opt->curlopt_val) guc_free(opt->curlopt_val);
 			opt->curlopt_val = guc_strdup(ERROR, value);
 			PG_RETURN_BOOL(set_curlopt(handle, opt));

@@ -255,6 +255,7 @@ Select [CURL options](https://curl.se/libcurl/c/curl_easy_setopt.html) are avail
 * [CURLOPT_CONNECTTIMEOUT](https://curl.se/libcurl/c/CURLOPT_CONNECTTIMEOUT.html)
 * [CURLOPT_CONNECTTIMEOUT_MS](https://curl.se/libcurl/c/CURLOPT_CONNECTTIMEOUT_MS.html)
 * [CURLOPT_DNS_SERVERS](https://curl.se/libcurl/c/CURLOPT_DNS_SERVERS.html)
+* [CURLOPT_HTTPAUTH](https://curl.se/libcurl/c/CURLOPT_HTTPAUTH.html)
 * [CURLOPT_PRE_PROXY](https://curl.se/libcurl/c/CURLOPT_PRE_PROXY.html)
 * [CURLOPT_PROXY](https://curl.se/libcurl/c/CURLOPT_PROXY.html)
 * [CURLOPT_PROXYPASSWORD](https://curl.se/libcurl/c/CURLOPT_PROXYPASSWORD.html)
@@ -352,6 +353,29 @@ When a timeout occurs during a request, a SQL error will be raised:
 
 ```sql
 ERROR:  Operation timed out after 200 milliseconds with 0 bytes received
+```
+
+## GSSAPI Auth Passthrough
+
+If the client connection authenticated into postgres via [GSSAPI](https://www.postgresql.org/docs/current/gssapi-auth.html), it is possible for pgsql-http to use the same credentials to authenticate to GSSAPI secured HTTP endpoints. This is similar to how GSSAPI auth pass through works with `postgres_fdw` and `dblink`.
+
+In order to use this functionality [gss_accept_delegation](https://www.postgresql.org/docs/current/runtime-config-connection.html#GUC-GSS-ACCEPT-DELEGATION) should be set to `on` the postgres config, the client should set the (gssdelegation)[https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-GSSDELEGATION] connection parameter to `1`, and the `pgsql-http` should set `CURLOPT_HTTPAUTH` and `CURLOPT_USERPWD` as shown below.
+
+For example
+```
+-- gss_accept_delegation should be true in server config
+SHOW gss_accept_delegation;
+
+-- gssdelegation was set to 1 in driver
+SELECT credentials_delegated FROM pg_stat_gssapi where pid = pg_backend_pid();
+
+-- set curlopts to use GSSAPI
+SELECT http_set_curlopt('CURLOPT_HTTPAUTH', 'CURLAUTH_NEGOTIATE');
+SELECT http_set_curlopt('CURLOPT_USERPWD', ':');
+
+-- pgsql-http should now be set up for GSSAPI HTTP auth
+SELECT *
+FROM http_get('http://gssapi_protected_hostname/gssapi_protected_path');
 ```
 
 ## Installation
